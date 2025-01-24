@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { motion } from "framer-motion"
 import { type CheckedState } from "@radix-ui/react-checkbox"
-import { Coins, Shield, Gauge, Lock, Percent, Sparkles } from "lucide-react"
+import { Coins, Shield, Gauge, Percent, Sparkles } from "lucide-react"
 
 const tokenFormSchema = z.object({
   name: z.string().min(1, "Token name is required"),
