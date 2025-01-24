@@ -44,9 +44,9 @@ export default function DappPage() {
       <main className="relative pt-24 pb-16 container mx-auto px-4">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Left Column - AI Chat */}
-          <div className="w-full lg:w-1/2 space-y-4">
+          <div className="w-full lg:w-1/2">
             <Card className="bg-black/50 backdrop-blur-xl border-white/10 shadow-xl shadow-primary/10">
-              <div className="p-4 border-b border-white/10 space-y-4">
+              <div className="p-4 border-b border-white/10">
                 <div className="flex items-center justify-between">
                   <Select value={creationType} onValueChange={(value) => setCreationType(value)}>
                     <SelectTrigger className="w-[180px] bg-black/50 border-white/10 text-white">

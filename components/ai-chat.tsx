@@ -63,7 +63,7 @@ export function AIChat({ creationType }: AIChatProps) {
   }
 
   return (
-    <div className="flex flex-col h-[800px]">
+    <div className="flex flex-col min-h-[70vh] lg:min-h-[75vh] h-full">
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <AnimatePresence initial={false}>
           {messages.map((message) => (
@@ -109,6 +109,7 @@ export function AIChat({ creationType }: AIChatProps) {
           )}
         </AnimatePresence>
       </ScrollArea>
+
       <div className="p-4 border-t border-white/10">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
