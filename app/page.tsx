@@ -1,101 +1,104 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState } from "react"
+import { Brain, Wallet } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { TokenCreationForm } from "@/components/token-creation-form"
+import { AIChat } from "@/components/ai-chat"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import Link from "next/link"
+
+export default function DappPage() {
+  const [useAI, setUseAI] = useState(true)
+  const [creationType, setCreationType] = useState("token")
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="relative min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/20 via-transparent to-transparent blur-3xl opacity-30 animate-pulse" />
+        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-primary/20 via-transparent to-transparent blur-3xl opacity-30 animate-pulse delay-1000" />
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      {/* Header */}
+      <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center space-x-2 group">
+            <div className="relative">
+              <Brain className="w-8 h-8 text-primary relative z-10" />
+              <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/30 transition-colors" />
+            </div>
+            <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-white to-white/80">
+              SmartAI
+            </span>
+          </Link>
+          <Button
+            variant="outline"
+            className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <Wallet className="w-4 h-4" />
+            Connect Wallet
+          </Button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="relative pt-24 pb-16 container mx-auto px-4">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left Column - AI Chat */}
+          <div className="w-full lg:w-1/2 space-y-4">
+            <Card className="bg-black/50 backdrop-blur-xl border-white/10 shadow-xl shadow-primary/10">
+              <div className="p-4 border-b border-white/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Select value={creationType} onValueChange={(value) => setCreationType(value)}>
+                    <SelectTrigger className="w-[180px] bg-black/50 border-white/10 text-white">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-black/90 border-white/10">
+                      <SelectItem value="token" className="text-white focus:text-white focus:bg-white/10">
+                        Token Creation
+                      </SelectItem>
+                      <SelectItem value="nft" className="text-white focus:text-white focus:bg-white/10">
+                        NFT Creation
+                      </SelectItem>
+                      <SelectItem value="dao" className="text-white focus:text-white focus:bg-white/10">
+                        DAO Creation
+                      </SelectItem>
+                      <SelectItem value="defi" className="text-white focus:text-white focus:bg-white/10">
+                        DeFi Protocol
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="ai-mode"
+                      checked={useAI}
+                      onCheckedChange={setUseAI}
+                      className="data-[state=checked]:bg-primary"
+                    />
+                    <Label htmlFor="ai-mode" className="text-white/90">
+                      AI Assistant
+                    </Label>
+                  </div>
+                </div>
+              </div>
+              <AIChat creationType={creationType} />
+            </Card>
+          </div>
+
+          {/* Right Column - Form */}
+          <div className="w-full lg:w-1/2">
+            <Card className="bg-black/50 backdrop-blur-xl border-white/10 shadow-xl shadow-primary/10">
+              <TokenCreationForm />
+            </Card>
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
-  );
+  )
 }
+
