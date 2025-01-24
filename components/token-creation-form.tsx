@@ -1,9 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -14,8 +13,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { motion } from "framer-motion"
 import { type CheckedState } from "@radix-ui/react-checkbox"
 import { Coins, Shield, Gauge, Lock, Percent, Sparkles } from "lucide-react"
-import { Progress } from "@/components/ui/progress"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const tokenFormSchema = z.object({
   name: z.string().min(1, "Token name is required"),
@@ -46,7 +43,6 @@ const tokenFormSchema = z.object({
 type TokenFormValues = z.infer<typeof tokenFormSchema>
 
 export function TokenCreationForm() {
-  const [progress, setProgress] = useState(0)
   const form = useForm<TokenFormValues>({
     resolver: zodResolver(tokenFormSchema),
     defaultValues: {
@@ -76,53 +72,21 @@ export function TokenCreationForm() {
     },
   })
 
-  // Calculate form progress
-  const calculateProgress = (values: TokenFormValues) => {
-    const totalFields = Object.keys(tokenFormSchema.shape).length
-    const filledFields = Object.entries(values).filter(([_, value]) => {
-      if (typeof value === 'boolean') return true
-      if (typeof value === 'number') return true
-      return value && value.toString().trim() !== ''
-    }).length
-    return Math.round((filledFields / totalFields) * 100)
-  }
-
   const onSubmit = (values: TokenFormValues) => {
     console.log(values)
   }
-
-  // Update progress on form change
-  useEffect(() => {
-    const subscription = form.watch((values) => {
-      setProgress(calculateProgress(values as TokenFormValues))
-    })
-    return () => subscription.unsubscribe()
-  }, [form.watch])
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-8">
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
                 <Coins className="w-6 h-6 text-primary" />
               </div>
               <h2 className="text-xl font-semibold text-white">Token Details</h2>
             </div>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2">
-                    <Progress value={progress} className="w-24 h-2" />
-                    <span className="text-sm text-white/50">{progress}%</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Form completion progress</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
 
           <motion.div
