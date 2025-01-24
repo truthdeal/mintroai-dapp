@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -11,6 +13,9 @@ import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { motion } from "framer-motion"
 import { type CheckedState } from "@radix-ui/react-checkbox"
+import { Coins, Shield, Gauge, Lock, Percent, Sparkles } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const tokenFormSchema = z.object({
   name: z.string().min(1, "Token name is required"),
@@ -41,6 +46,7 @@ const tokenFormSchema = z.object({
 type TokenFormValues = z.infer<typeof tokenFormSchema>
 
 export function TokenCreationForm() {
+  const [progress, setProgress] = useState(0)
   const form = useForm<TokenFormValues>({
     resolver: zodResolver(tokenFormSchema),
     defaultValues: {
@@ -70,17 +76,53 @@ export function TokenCreationForm() {
     },
   })
 
-  function onSubmit(values: TokenFormValues) {
+  // Calculate form progress
+  const calculateProgress = (values: TokenFormValues) => {
+    const totalFields = Object.keys(tokenFormSchema.shape).length
+    const filledFields = Object.entries(values).filter(([_, value]) => {
+      if (typeof value === 'boolean') return true
+      if (typeof value === 'number') return true
+      return value && value.toString().trim() !== ''
+    }).length
+    return Math.round((filledFields / totalFields) * 100)
+  }
+
+  const onSubmit = (values: TokenFormValues) => {
     console.log(values)
   }
+
+  // Update progress on form change
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      setProgress(calculateProgress(values as TokenFormValues))
+    })
+    return () => subscription.unsubscribe()
+  }, [form.watch])
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-8">
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Token Details</h2>
-            <div className="h-1 w-1/3 bg-gradient-to-r from-primary/50 to-transparent rounded-full" />
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Coins className="w-6 h-6 text-primary" />
+              </div>
+              <h2 className="text-xl font-semibold text-white">Token Details</h2>
+            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2">
+                    <Progress value={progress} className="w-24 h-2" />
+                    <span className="text-sm text-white/50">{progress}%</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Form completion progress</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           <motion.div
@@ -171,11 +213,13 @@ export function TokenCreationForm() {
         <Separator className="bg-white/10" />
 
         <Accordion type="single" collapsible className="w-full space-y-4">
-          <AccordionItem value="features" className="border-white/10 px-2">
-            <AccordionTrigger className="text-white hover:text-primary transition-colors py-4">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-primary" />
-                Basic Features
+          <AccordionItem value="features" className="border-white/10 px-2 group">
+            <AccordionTrigger className="text-white hover:text-primary transition-colors py-4 group">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <span>Basic Features</span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="grid gap-4 pt-4">
@@ -206,11 +250,13 @@ export function TokenCreationForm() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="limits" className="border-white/10 px-2">
+          <AccordionItem value="limits" className="border-white/10 px-2 group">
             <AccordionTrigger className="text-white hover:text-primary transition-colors py-4">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-primary" />
-                Limits & Trading
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Gauge className="w-5 h-5 text-primary" />
+                </div>
+                <span>Limits & Trading</span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
@@ -256,11 +302,13 @@ export function TokenCreationForm() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="taxes" className="border-white/10 px-2">
+          <AccordionItem value="taxes" className="border-white/10 px-2 group">
             <AccordionTrigger className="text-white hover:text-primary transition-colors py-4">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-primary" />
-                Taxes
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Percent className="w-5 h-5 text-primary" />
+                </div>
+                <span>Taxes</span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="grid gap-4 pt-4">
@@ -290,11 +338,13 @@ export function TokenCreationForm() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="security" className="border-white/10 px-2">
+          <AccordionItem value="security" className="border-white/10 px-2 group">
             <AccordionTrigger className="text-white hover:text-primary transition-colors py-4">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-primary" />
-                Security
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Shield className="w-5 h-5 text-primary" />
+                </div>
+                <span>Security</span>
               </div>
             </AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
@@ -345,9 +395,12 @@ export function TokenCreationForm() {
           <Button
             type="submit"
             className="w-full bg-primary hover:bg-primary/90 text-white font-semibold
-              transition-all duration-300 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]"
+              transition-all duration-300 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]
+              relative overflow-hidden group"
           >
-            Create Token
+            <span className="relative z-10">Create Token</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/10 to-primary/0 
+              translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
           </Button>
         </div>
       </form>
