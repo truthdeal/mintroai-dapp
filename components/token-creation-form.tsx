@@ -4,12 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { motion } from "framer-motion"
+import { type CheckedState } from "@radix-ui/react-checkbox"
 
 const tokenFormSchema = z.object({
   name: z.string().min(1, "Token name is required"),
@@ -37,16 +38,22 @@ const tokenFormSchema = z.object({
   cooldownTime: z.number(),
 })
 
+type TokenFormValues = z.infer<typeof tokenFormSchema>
+
 export function TokenCreationForm() {
-  const form = useForm<z.infer<typeof tokenFormSchema>>({
+  const form = useForm<TokenFormValues>({
     resolver: zodResolver(tokenFormSchema),
     defaultValues: {
+      name: "",
+      symbol: "",
       decimals: 18,
+      initialSupply: "1000000",
       mintable: true,
       burnable: true,
       pausable: true,
       maxWallet: false,
       maxTx: true,
+      maxTxAmount: "10000",
       blacklist: true,
       enableTrading: true,
       buyTax: 1,
@@ -63,7 +70,7 @@ export function TokenCreationForm() {
     },
   })
 
-  function onSubmit(values: z.infer<typeof tokenFormSchema>) {
+  function onSubmit(values: TokenFormValues) {
     console.log(values)
   }
 
@@ -122,16 +129,17 @@ export function TokenCreationForm() {
               <FormField
                 control={form.control}
                 name="decimals"
-                render={({ field }) => (
+                render={({ field: { value, onChange, ...field } }) => (
                   <FormItem>
                     <FormLabel className="text-white">Decimals</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        value={value.toString()}
+                        onChange={(e) => onChange(Number(e.target.value))}
                         className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                           focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage className="text-red-400" />
@@ -175,14 +183,17 @@ export function TokenCreationForm() {
                 <FormField
                   key={feature}
                   control={form.control}
-                  name={feature as any}
-                  render={({ field }) => (
+                  name={feature as keyof TokenFormValues}
+                  render={({ field: { value, onChange, ...field } }) => (
                     <FormItem className="flex items-center space-x-3 space-y-0">
                       <FormControl>
                         <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
+                          checked={value as boolean}
+                          onCheckedChange={(checked: CheckedState) => {
+                            onChange(checked === true)
+                          }}
                           className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          {...field}
                         />
                       </FormControl>
                       <FormLabel className="text-white font-normal">
@@ -206,13 +217,16 @@ export function TokenCreationForm() {
               <FormField
                 control={form.control}
                 name="maxTx"
-                render={({ field }) => (
+                render={({ field: { value, onChange, ...field } }) => (
                   <FormItem className="flex items-center space-x-3 space-y-0">
                     <FormControl>
                       <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
+                        checked={value as boolean}
+                        onCheckedChange={(checked: CheckedState) => {
+                          onChange(checked === true)
+                        }}
                         className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        {...field}
                       />
                     </FormControl>
                     <FormLabel className="text-white font-normal">Max Transaction Limit</FormLabel>
@@ -254,17 +268,18 @@ export function TokenCreationForm() {
                 <FormField
                   key={tax}
                   control={form.control}
-                  name={tax as any}
-                  render={({ field }) => (
+                  name={tax as keyof TokenFormValues}
+                  render={({ field: { value, onChange, ...field } }) => (
                     <FormItem>
                       <FormLabel className="text-white">{tax.replace("Tax", " Tax (%)")}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          value={value.toString()}
+                          onChange={(e) => onChange(Number(e.target.value))}
                           className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                             focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage className="text-red-400" />
@@ -286,13 +301,16 @@ export function TokenCreationForm() {
               <FormField
                 control={form.control}
                 name="antibot"
-                render={({ field }) => (
+                render={({ field: { value, onChange, ...field } }) => (
                   <FormItem className="flex items-center space-x-3 space-y-0">
                     <FormControl>
                       <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
+                        checked={value as boolean}
+                        onCheckedChange={(checked: CheckedState) => {
+                          onChange(checked === true)
+                        }}
                         className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        {...field}
                       />
                     </FormControl>
                     <FormLabel className="text-white font-normal">Anti-bot Protection</FormLabel>
@@ -302,16 +320,17 @@ export function TokenCreationForm() {
               <FormField
                 control={form.control}
                 name="cooldownTime"
-                render={({ field }) => (
+                render={({ field: { value, onChange, ...field } }) => (
                   <FormItem>
                     <FormLabel className="text-white">Cooldown Time (seconds)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        value={value.toString()}
+                        onChange={(e) => onChange(Number(e.target.value))}
                         className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                           focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage className="text-red-400" />

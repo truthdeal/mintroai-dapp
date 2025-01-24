@@ -1,7 +1,6 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from '@/components/ui/button'
 import { Wallet } from 'lucide-react'
-import { formatEther } from 'viem'
 
 export function CustomConnectButton() {
   return (
@@ -13,7 +12,6 @@ export function CustomConnectButton() {
         openChainModal,
         openConnectModal,
         mounted,
-        authenticationStatus,
       }) => {
         const ready = mounted
         if (!ready) {
@@ -79,9 +77,7 @@ export function CustomConnectButton() {
                     className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
                   >
                     <Wallet className="w-4 h-4" />
-                    {account.displayBalance
-                      ? `${account.displayBalance}  `
-                      : ''} 
+                    {account.displayBalance ? `${account.displayBalance}  ` : ''} 
                     {account.displayName}
                   </Button>
                 </>
