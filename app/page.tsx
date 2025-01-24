@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Brain, Wallet } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Brain } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { TokenCreationForm } from "@/components/token-creation-form"
 import { AIChat } from "@/components/ai-chat"
@@ -10,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { CustomConnectButton } from "@/components/custom-connect-button"
 
 export default function DappPage() {
   const [useAI, setUseAI] = useState(true)
@@ -36,13 +36,7 @@ export default function DappPage() {
               SmartAI
             </span>
           </Link>
-          <Button
-            variant="outline"
-            className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
-          >
-            <Wallet className="w-4 h-4" />
-            Connect Wallet
-          </Button>
+          <CustomConnectButton />
         </div>
       </header>
 
