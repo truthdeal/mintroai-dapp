@@ -8,6 +8,11 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Bot, Send, User } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
+// Random ID oluşturmak için basit bir fonksiyon
+function generateId() {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36)
+}
+
 interface Message {
   id: string
   role: "assistant" | "user"
@@ -28,7 +33,13 @@ export function AIChat({ creationType }: AIChatProps) {
   ])
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [sessionId, setSessionId] = useState("")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+
+  // Session ID'yi sayfa yüklendiğinde oluştur
+  useEffect(() => {
+    setSessionId(generateId())
+  }, [])
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -50,16 +61,40 @@ export function AIChat({ creationType }: AIChatProps) {
     setInput("")
     setIsTyping(true)
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          chatInput: input,
+        }),
+      })
+
+      const data = await response.json()
+      
+      // AI yanıtını ekle
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `I understand you want to know more about ${input}. Let me help you with that...`,
+        content: data.output || data.message || "I understand your message. Let me help you with that...",
       }
+
       setMessages((prev) => [...prev, aiMessage])
+    } catch (error) {
+      console.error('Chat error:', error)
+      // Hata durumunda kullanıcıya bilgi ver
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "I apologize, but I encountered an error. Please try again.",
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
       setIsTyping(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -86,7 +121,7 @@ export function AIChat({ creationType }: AIChatProps) {
                 )}
               </div>
               <Card
-                className={`flex-1 p-3 text-white/90
+                className={`flex-1 p-3 text-white/90 whitespace-pre-wrap
                 ${message.role === "assistant" ? "bg-primary/10 border-primary/20" : "bg-white/10 border-white/10"}`}
               >
                 {message.content}
