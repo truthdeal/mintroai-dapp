@@ -13,6 +13,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { motion } from "framer-motion"
 import { type CheckedState } from "@radix-ui/react-checkbox"
 import { Coins, Shield, Gauge, Percent, Sparkles } from "lucide-react"
+import { useWebSocket } from "@/hooks/useWebSocket"
+import { useState, useEffect } from "react"
 
 const tokenFormSchema = z.object({
   name: z.string().min(1, "Token name is required"),
@@ -43,37 +45,51 @@ const tokenFormSchema = z.object({
 type TokenFormValues = z.infer<typeof tokenFormSchema>
 
 export function TokenCreationForm() {
+  const [sessionId, setSessionId] = useState("")
   const form = useForm<TokenFormValues>({
     resolver: zodResolver(tokenFormSchema),
     defaultValues: {
       name: "",
       symbol: "",
-      decimals: 18,
-      initialSupply: "1000000",
-      mintable: true,
-      burnable: true,
-      pausable: true,
+      decimals: 0,
+      initialSupply: "",
+      mintable: false,
+      burnable: false,
+      pausable: false,
       maxWallet: false,
-      maxTx: true,
-      maxTxAmount: "10000",
-      blacklist: true,
-      enableTrading: true,
-      buyTax: 1,
-      sellTax: 2,
+      maxTx: false,
+      maxTxAmount: "",
+      blacklist: false,
+      enableTrading: false,
+      buyTax: 0,
+      sellTax: 0,
       transferTax: 0,
-      enableLiquidity: true,
-      autoBurn: true,
-      autoBurnAmount: 100,
-      enableDividends: true,
-      claimWait: 3600,
-      minimumAmount: 50,
-      antibot: true,
-      cooldownTime: 1200,
+      enableLiquidity: false,
+      autoBurn: false,
+      autoBurnAmount: 0,
+      enableDividends: false,
+      claimWait: 0,
+      minimumAmount: 0,
+      antibot: false,
+      cooldownTime: 0,
     },
   })
 
+  useEffect(() => {
+    setSessionId(Math.random().toString(36).substring(2) + Date.now().toString(36))
+  }, [])
+
+  useWebSocket(sessionId, (config) => {
+    console.log('Received config update:', config)
+    form.reset({
+      ...form.getValues(),
+      ...config,
+    })
+  })
+
   const onSubmit = (values: TokenFormValues) => {
-    console.log(values)
+    console.log('Form submitted:', values)
+    // Submit işlemi daha sonra eklenecek
   }
 
   return (
