@@ -75,9 +75,13 @@ export function TokenCreationForm() {
     },
   })
 
+  const [updatedFields, setUpdatedFields] = React.useState<Set<string>>(new Set())
+
   useWebSocket(sessionId, isInitialized, (config) => {
     console.log('Form received config update:', config)
     console.log('Current form values:', form.getValues())
+    
+    const newUpdatedFields = new Set<string>()
     
     // Form değerlerini güncelle
     Object.keys(config).forEach((key) => {
@@ -103,6 +107,7 @@ export function TokenCreationForm() {
             shouldDirty: true,
             shouldTouch: true,
           });
+          newUpdatedFields.add(key)
         } else {
           console.log(`Field ${key} unchanged, no update needed.`);
         }
@@ -111,6 +116,14 @@ export function TokenCreationForm() {
       }
     })
     
+    // Güncellenen alanları state'e kaydet
+    setUpdatedFields(newUpdatedFields)
+    
+    // 1.5 saniye sonra highlight'ları temizle
+    setTimeout(() => {
+      setUpdatedFields(new Set())
+    }, 1500)
+    
     console.log('Updated form values:', form.getValues())
   })
 
@@ -118,6 +131,32 @@ export function TokenCreationForm() {
     console.log('Form submitted:', values)
     // Submit işlemi daha sonra eklenecek
   }
+
+  // Input wrapper component'i
+  const AnimatedFormInput = React.forwardRef<
+    HTMLInputElement,
+    React.InputHTMLAttributes<HTMLInputElement> & { isUpdated?: boolean }
+  >(({ className, isUpdated, ...props }, ref) => (
+    <Input
+      ref={ref}
+      className={`${className} ${isUpdated ? 'highlight-update' : ''}`}
+      {...props}
+    />
+  ))
+  AnimatedFormInput.displayName = 'AnimatedFormInput'
+
+  // Checkbox wrapper component'i
+  const AnimatedFormCheckbox = React.forwardRef<
+    HTMLButtonElement,
+    React.ComponentPropsWithoutRef<typeof Checkbox> & { isUpdated?: boolean }
+  >(({ className, isUpdated, ...props }, ref) => (
+    <Checkbox
+      ref={ref}
+      className={`${className} ${isUpdated ? 'highlight-update' : ''}`}
+      {...props}
+    />
+  ))
+  AnimatedFormCheckbox.displayName = 'AnimatedFormCheckbox'
 
   return (
     <Form {...form}>
@@ -145,11 +184,12 @@ export function TokenCreationForm() {
                 <FormItem>
                   <FormLabel className="text-white">Token Name</FormLabel>
                   <FormControl>
-                    <Input
+                    <AnimatedFormInput
                       placeholder="MyToken"
                       {...field}
                       className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                         focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                      isUpdated={updatedFields.has("name")}
                     />
                   </FormControl>
                   <FormMessage className="text-red-400" />
@@ -163,11 +203,12 @@ export function TokenCreationForm() {
                 <FormItem>
                   <FormLabel className="text-white">Token Symbol</FormLabel>
                   <FormControl>
-                    <Input
+                    <AnimatedFormInput
                       placeholder="MTK"
                       {...field}
                       className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                         focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                      isUpdated={updatedFields.has("symbol")}
                     />
                   </FormControl>
                   <FormMessage className="text-red-400" />
@@ -182,12 +223,13 @@ export function TokenCreationForm() {
                   <FormItem>
                     <FormLabel className="text-white">Decimals</FormLabel>
                     <FormControl>
-                      <Input
+                      <AnimatedFormInput
                         type="number"
                         value={value.toString()}
                         onChange={(e) => onChange(Number(e.target.value))}
                         className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                           focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                        isUpdated={updatedFields.has("decimals")}
                         {...field}
                       />
                     </FormControl>
@@ -202,11 +244,12 @@ export function TokenCreationForm() {
                   <FormItem>
                     <FormLabel className="text-white">Initial Supply</FormLabel>
                     <FormControl>
-                      <Input
+                      <AnimatedFormInput
                         placeholder="1000000"
                         {...field}
                         className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                           focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                        isUpdated={updatedFields.has("initialSupply")}
                       />
                     </FormControl>
                     <FormMessage className="text-red-400" />
@@ -238,12 +281,13 @@ export function TokenCreationForm() {
                   render={({ field: { value, onChange, ...field } }) => (
                     <FormItem className="flex items-center space-x-3 space-y-0">
                       <FormControl>
-                        <Checkbox
+                        <AnimatedFormCheckbox
                           checked={value as boolean}
                           onCheckedChange={(checked: CheckedState) => {
                             onChange(checked === true)
                           }}
                           className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          isUpdated={updatedFields.has(feature)}
                           {...field}
                         />
                       </FormControl>
@@ -273,12 +317,13 @@ export function TokenCreationForm() {
                 render={({ field: { value, onChange, ...field } }) => (
                   <FormItem className="flex items-center space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
+                      <AnimatedFormCheckbox
                         checked={value as boolean}
                         onCheckedChange={(checked: CheckedState) => {
                           onChange(checked === true)
                         }}
                         className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        isUpdated={updatedFields.has("maxTx")}
                         {...field}
                       />
                     </FormControl>
@@ -294,11 +339,12 @@ export function TokenCreationForm() {
                     <FormItem>
                       <FormLabel className="text-white">Max Transaction Amount</FormLabel>
                       <FormControl>
-                        <Input
+                        <AnimatedFormInput
                           placeholder="10000"
                           {...field}
                           className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                             focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                          isUpdated={updatedFields.has("maxTxAmount")}
                         />
                       </FormControl>
                       <FormMessage className="text-red-400" />
@@ -328,12 +374,13 @@ export function TokenCreationForm() {
                     <FormItem>
                       <FormLabel className="text-white">{tax.replace("Tax", " Tax (%)")}</FormLabel>
                       <FormControl>
-                        <Input
+                        <AnimatedFormInput
                           type="number"
                           value={value.toString()}
                           onChange={(e) => onChange(Number(e.target.value))}
                           className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                             focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                          isUpdated={updatedFields.has(tax)}
                           {...field}
                         />
                       </FormControl>
@@ -361,12 +408,13 @@ export function TokenCreationForm() {
                 render={({ field: { value, onChange, ...field } }) => (
                   <FormItem className="flex items-center space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
+                      <AnimatedFormCheckbox
                         checked={value as boolean}
                         onCheckedChange={(checked: CheckedState) => {
                           onChange(checked === true)
                         }}
                         className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        isUpdated={updatedFields.has("antibot")}
                         {...field}
                       />
                     </FormControl>
@@ -381,12 +429,13 @@ export function TokenCreationForm() {
                   <FormItem>
                     <FormLabel className="text-white">Cooldown Time (seconds)</FormLabel>
                     <FormControl>
-                      <Input
+                      <AnimatedFormInput
                         type="number"
                         value={value.toString()}
                         onChange={(e) => onChange(Number(e.target.value))}
                         className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                           focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                        isUpdated={updatedFields.has("cooldownTime")}
                         {...field}
                       />
                     </FormControl>
