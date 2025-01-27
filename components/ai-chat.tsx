@@ -47,54 +47,77 @@ export function AIChat({ creationType }: AIChatProps) {
     }
   }, [messages])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim()) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    setIsTyping(true)
+  const sendMessage = async (message: string) => {
+    if (!message.trim()) return
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sessionId,
-          chatInput: input,
-        }),
-      })
+      setMessages(prev => [...prev, { 
+        id: generateId(),
+        role: 'user', 
+        content: message 
+      }])
+      setInput('')
+      setIsTyping(true)
 
-      const data = await response.json()
-      
-      // AI yanıtını ekle
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: data.output || data.message || "I understand your message. Let me help you with that...",
-      }
+      const maxRetries = 3
+      let retryCount = 0
+      let success = false
 
-      setMessages((prev) => [...prev, aiMessage])
-    } catch (error) {
-      console.error('Chat error:', error)
-      // Hata durumunda kullanıcıya bilgi ver
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "I apologize, but I encountered an error. Please try again.",
+      while (retryCount < maxRetries && !success) {
+        try {
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sessionId,
+              chatInput: message,
+            }),
+          })
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+
+          const data = await response.json()
+          success = true
+
+          setMessages(prev => [
+            ...prev,
+            { 
+              id: generateId(),
+              role: 'assistant', 
+              content: data.output || data.message || "I understand your message. Let me help you with that..." 
+            }
+          ])
+        } catch (error) {
+          console.error('Chat error:', error)
+          retryCount++
+          
+          if (retryCount === maxRetries) {
+            setMessages(prev => [
+              ...prev,
+              { 
+                id: generateId(),
+                role: 'assistant', 
+                content: "I'm sorry, but I'm having trouble responding right now. Please try again in a moment." 
+              }
+            ])
+          } else {
+            // Exponential backoff: 1s, 2s, 4s
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000))
+          }
+        }
       }
-      setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsTyping(false)
     }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    sendMessage(input)
   }
 
   return (
