@@ -99,6 +99,7 @@ export function TokenCreationForm() {
     
     const newUpdatedFields = new Set<string>()
     const newUpdatedSections = new Set<string>()
+    let hasChanges = false
     
     // Form değerlerini güncelle
     Object.keys(config).forEach((key) => {
@@ -117,7 +118,8 @@ export function TokenCreationForm() {
         }
 
         // Yeni değeri mevcut değerle karşılaştır
-        if (currentValue !== value) {
+        const hasChanged = JSON.stringify(currentValue) !== JSON.stringify(value);
+        if (hasChanged) {
           console.log(`Updating form field: ${key} with value:`, value);
           form.setValue(key as keyof TokenFormValues, value, {
             shouldValidate: true,
@@ -125,6 +127,7 @@ export function TokenCreationForm() {
             shouldTouch: true,
           });
           newUpdatedFields.add(key)
+          hasChanges = true
           
           // Field'ın bağlı olduğu section'ı da güncelle
           if (fieldToSection[key]) {
@@ -138,15 +141,17 @@ export function TokenCreationForm() {
       }
     })
     
-    // Güncellenen alanları state'e kaydet
-    setUpdatedFields(newUpdatedFields)
-    setUpdatedSections(newUpdatedSections)
-    
-    // 4 saniye sonra highlight'ları temizle
-    setTimeout(() => {
-      setUpdatedFields(new Set())
-      setUpdatedSections(new Set())
-    }, 4000)
+    // Sadece değişiklik varsa state'leri güncelle
+    if (hasChanges) {
+      setUpdatedFields(new Set(newUpdatedFields))
+      setUpdatedSections(new Set(newUpdatedSections))
+      
+      // 4 saniye sonra highlight'ları temizle
+      setTimeout(() => {
+        setUpdatedFields(new Set())
+        setUpdatedSections(new Set())
+      }, 4000)
+    }
     
     console.log('Updated form values:', form.getValues())
   })
