@@ -11,6 +11,10 @@ export function useWebSocket(
   isInitialized: boolean,
   onConfigUpdate: ConfigUpdateCallback
 ) {
+  // `onConfigUpdate` callback'ini ref ile saralım
+  const onConfigUpdateRef = useRef(onConfigUpdate)
+  onConfigUpdateRef.current = onConfigUpdate
+
   useEffect(() => {
     if (!sessionId || !isInitialized) return
 
@@ -42,10 +46,19 @@ export function useWebSocket(
     }
 
     ws.onmessage = (event) => {
+      console.log('Raw WebSocket message received:', event.data)
       try {
         const data = JSON.parse(event.data)
-        if (data.type === 'configUpdated' && data.sessionId === sessionId) {
-          onConfigUpdate(data.config)
+        console.log('Parsed WebSocket data:', data)
+        if (data.type === 'configUpdated' && data.chatId === sessionId) {
+          console.log('Config update for current session:', data.config)
+          onConfigUpdateRef.current(data.config)
+        } else {
+          console.log('Message ignored - type or sessionId mismatch:', {
+            type: data.type,
+            messageChatId: data.chatId,
+            currentSessionId: sessionId
+          })
         }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error)
@@ -71,28 +84,11 @@ export function useWebSocket(
     // Cleanup function
     return () => {
       // Component unmount olduğunda bağlantıyı kapatma
-      // Strict Mode'da gereksiz yere bağlantı kapatıp açmayı önler
-      if (document.visibilityState === 'hidden' && globalWs?.readyState === WebSocket.OPEN) {
+      if (globalWs?.readyState === WebSocket.OPEN) {
         globalWs.close()
         globalWs = null
         globalSessionId = null
       }
     }
   }, [sessionId, isInitialized])
-
-  // onConfigUpdate değiştiğinde mesaj handler'ını güncelle
-  useEffect(() => {
-    if (globalWs && globalSessionId === sessionId) {
-      globalWs.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (data.type === 'configUpdated' && data.sessionId === sessionId) {
-            onConfigUpdate(data.config)
-          }
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error)
-        }
-      }
-    }
-  }, [onConfigUpdate, sessionId])
 } 

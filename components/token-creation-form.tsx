@@ -76,11 +76,36 @@ export function TokenCreationForm() {
   })
 
   useWebSocket(sessionId, isInitialized, (config) => {
-    console.log('Received config update:', config)
-    form.reset({
-      ...form.getValues(),
-      ...config,
+    console.log('Form received config update:', config)
+    console.log('Current form values:', form.getValues())
+    
+    // Form değerlerini güncelle
+    Object.keys(config).forEach((key) => {
+      if (key in form.getValues()) {
+        let value = config[key];
+        const formValueType = typeof form.getValues()[key as keyof TokenFormValues];
+
+        // Tip dönüşümü yap
+        if (formValueType === 'number' && typeof value === 'string') {
+          value = parseFloat(value);
+        } else if (formValueType === 'string' && typeof value === 'number') {
+          value = value.toString();
+        } else if (formValueType === 'boolean' && typeof value !== 'boolean') {
+          value = Boolean(value);
+        }
+
+        console.log(`Updating form field: ${key} with value:`, value);
+        form.setValue(key as keyof TokenFormValues, value, {
+          shouldValidate: true,
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+      } else {
+        console.log(`Field ${key} not found in form`);
+      }
     })
+    
+    console.log('Updated form values:', form.getValues())
   })
 
   const onSubmit = (values: TokenFormValues) => {
