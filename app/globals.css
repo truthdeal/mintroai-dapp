@@ -76,22 +76,44 @@
 
 @layer utilities {
   .highlight-update {
-    animation: highlight 1.5s ease-in-out;
+    animation: highlight 4s ease-in-out;
+  }
+
+  .highlight-section {
+    animation: highlight-section 4s ease-in-out;
   }
 }
 
 @keyframes highlight {
   0% {
-    background-color: rgba(124, 58, 237, 0);  /* primary color with 0 opacity */
+    background-color: rgba(124, 58, 237, 0);
+    border-color: rgba(124, 58, 237, 0);
     box-shadow: 0 0 0px rgba(124, 58, 237, 0);
   }
   30% {
     background-color: rgba(124, 58, 237, 0.15);
+    border-color: rgba(124, 58, 237, 0.5);
     box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
   }
   100% {
     background-color: rgba(124, 58, 237, 0);
+    border-color: rgba(255, 255, 255, 0.1);
     box-shadow: 0 0 0px rgba(124, 58, 237, 0);
+  }
+}
+
+@keyframes highlight-section {
+  0% {
+    background-color: rgba(124, 58, 237, 0);
+    border-color: rgba(124, 58, 237, 0);
+  }
+  30% {
+    background-color: rgba(124, 58, 237, 0.1);
+    border-color: rgba(124, 58, 237, 0.5);
+  }
+  100% {
+    background-color: rgba(124, 58, 237, 0);
+    border-color: rgba(255, 255, 255, 0.1);
   }
 }
 

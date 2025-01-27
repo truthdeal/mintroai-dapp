@@ -76,12 +76,29 @@ export function TokenCreationForm() {
   })
 
   const [updatedFields, setUpdatedFields] = React.useState<Set<string>>(new Set())
+  const [updatedSections, setUpdatedSections] = React.useState<Set<string>>(new Set())
+
+  // Section'ları field'larla eşleştir
+  const fieldToSection: { [key: string]: string } = {
+    mintable: 'features',
+    burnable: 'features',
+    pausable: 'features',
+    maxTx: 'limits',
+    maxTxAmount: 'limits',
+    maxWallet: 'limits',
+    buyTax: 'taxes',
+    sellTax: 'taxes',
+    transferTax: 'taxes',
+    antibot: 'security',
+    cooldownTime: 'security',
+  }
 
   useWebSocket(sessionId, isInitialized, (config) => {
     console.log('Form received config update:', config)
     console.log('Current form values:', form.getValues())
     
     const newUpdatedFields = new Set<string>()
+    const newUpdatedSections = new Set<string>()
     
     // Form değerlerini güncelle
     Object.keys(config).forEach((key) => {
@@ -108,6 +125,11 @@ export function TokenCreationForm() {
             shouldTouch: true,
           });
           newUpdatedFields.add(key)
+          
+          // Field'ın bağlı olduğu section'ı da güncelle
+          if (fieldToSection[key]) {
+            newUpdatedSections.add(fieldToSection[key])
+          }
         } else {
           console.log(`Field ${key} unchanged, no update needed.`);
         }
@@ -118,11 +140,13 @@ export function TokenCreationForm() {
     
     // Güncellenen alanları state'e kaydet
     setUpdatedFields(newUpdatedFields)
+    setUpdatedSections(newUpdatedSections)
     
-    // 1.5 saniye sonra highlight'ları temizle
+    // 4 saniye sonra highlight'ları temizle
     setTimeout(() => {
       setUpdatedFields(new Set())
-    }, 1500)
+      setUpdatedSections(new Set())
+    }, 4000)
     
     console.log('Updated form values:', form.getValues())
   })
@@ -263,7 +287,7 @@ export function TokenCreationForm() {
         <Separator className="bg-white/10" />
 
         <Accordion type="single" collapsible className="w-full space-y-4">
-          <AccordionItem value="features" className="border-white/10 px-2 group">
+          <AccordionItem value="features" className={`border-white/10 px-2 group ${updatedSections.has('features') ? 'highlight-section rounded-lg' : ''}`}>
             <AccordionTrigger className="text-white hover:text-primary transition-colors py-4 group">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -301,7 +325,7 @@ export function TokenCreationForm() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="limits" className="border-white/10 px-2 group">
+          <AccordionItem value="limits" className={`border-white/10 px-2 group ${updatedSections.has('limits') ? 'highlight-section rounded-lg' : ''}`}>
             <AccordionTrigger className="text-white hover:text-primary transition-colors py-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -355,7 +379,7 @@ export function TokenCreationForm() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="taxes" className="border-white/10 px-2 group">
+          <AccordionItem value="taxes" className={`border-white/10 px-2 group ${updatedSections.has('taxes') ? 'highlight-section rounded-lg' : ''}`}>
             <AccordionTrigger className="text-white hover:text-primary transition-colors py-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -392,7 +416,7 @@ export function TokenCreationForm() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="security" className="border-white/10 px-2 group">
+          <AccordionItem value="security" className={`border-white/10 px-2 group ${updatedSections.has('security') ? 'highlight-section rounded-lg' : ''}`}>
             <AccordionTrigger className="text-white hover:text-primary transition-colors py-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
