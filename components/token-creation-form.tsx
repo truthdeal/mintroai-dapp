@@ -14,7 +14,7 @@ import { motion } from "framer-motion"
 import { type CheckedState } from "@radix-ui/react-checkbox"
 import { Coins, Shield, Gauge, Percent, Sparkles } from "lucide-react"
 import { useWebSocket } from "@/hooks/useWebSocket"
-import { useState, useEffect } from "react"
+import { useSession } from "@/hooks/useSession"
 
 const tokenFormSchema = z.object({
   name: z.string().min(1, "Token name is required"),
@@ -45,7 +45,7 @@ const tokenFormSchema = z.object({
 type TokenFormValues = z.infer<typeof tokenFormSchema>
 
 export function TokenCreationForm() {
-  const [sessionId, setSessionId] = useState("")
+  const { sessionId, isInitialized } = useSession()
   const form = useForm<TokenFormValues>({
     resolver: zodResolver(tokenFormSchema),
     defaultValues: {
@@ -75,11 +75,7 @@ export function TokenCreationForm() {
     },
   })
 
-  useEffect(() => {
-    setSessionId(Math.random().toString(36).substring(2) + Date.now().toString(36))
-  }, [])
-
-  useWebSocket(sessionId, (config) => {
+  useWebSocket(sessionId, isInitialized, (config) => {
     console.log('Received config update:', config)
     form.reset({
       ...form.getValues(),

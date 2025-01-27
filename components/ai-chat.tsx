@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Bot, Send, User } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useSession } from "@/hooks/useSession"
+import { useWebSocket } from "@/hooks/useWebSocket"
 
 // Random ID oluşturmak için basit bir fonksiyon
 function generateId() {
@@ -33,13 +35,20 @@ export function AIChat({ creationType }: AIChatProps) {
   ])
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
-  const [sessionId, setSessionId] = useState("")
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
-  // Session ID'yi sayfa yüklendiğinde oluştur
-  useEffect(() => {
-    setSessionId(generateId())
-  }, [])
+  // Session yönetimi
+  const { sessionId, isInitialized } = useSession()
+
+  // WebSocket bağlantısı
+  useWebSocket(sessionId, isInitialized, (config) => {
+    if (config && typeof config === 'object') {
+      console.log('Received config update:', config)
+      // Form güncellemesi için event emit edilebilir
+      const event = new CustomEvent('formUpdate', { detail: config })
+      window.dispatchEvent(event)
+    }
+  })
 
   useEffect(() => {
     if (scrollAreaRef.current) {
