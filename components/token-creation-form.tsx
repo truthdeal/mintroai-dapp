@@ -83,7 +83,8 @@ export function TokenCreationForm() {
     Object.keys(config).forEach((key) => {
       if (key in form.getValues()) {
         let value = config[key];
-        const formValueType = typeof form.getValues()[key as keyof TokenFormValues];
+        const currentValue = form.getValues()[key as keyof TokenFormValues];
+        const formValueType = typeof currentValue;
 
         // Tip dönüşümü yap
         if (formValueType === 'number' && typeof value === 'string') {
@@ -94,12 +95,17 @@ export function TokenCreationForm() {
           value = Boolean(value);
         }
 
-        console.log(`Updating form field: ${key} with value:`, value);
-        form.setValue(key as keyof TokenFormValues, value, {
-          shouldValidate: true,
-          shouldDirty: true,
-          shouldTouch: true,
-        });
+        // Yeni değeri mevcut değerle karşılaştır
+        if (currentValue !== value) {
+          console.log(`Updating form field: ${key} with value:`, value);
+          form.setValue(key as keyof TokenFormValues, value, {
+            shouldValidate: true,
+            shouldDirty: true,
+            shouldTouch: true,
+          });
+        } else {
+          console.log(`Field ${key} unchanged, no update needed.`);
+        }
       } else {
         console.log(`Field ${key} not found in form`);
       }
