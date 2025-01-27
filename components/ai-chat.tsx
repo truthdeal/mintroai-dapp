@@ -35,7 +35,7 @@ export function AIChat({ creationType }: AIChatProps) {
   ])
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Session yönetimi
   const { sessionId, isInitialized } = useSession()
@@ -50,10 +50,12 @@ export function AIChat({ creationType }: AIChatProps) {
     }
   })
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
-    }
+    scrollToBottom()
   }, [messages])
 
   const sendMessage = async (message: string) => {
@@ -130,51 +132,54 @@ export function AIChat({ creationType }: AIChatProps) {
   }
 
   return (
-    <div className="flex flex-col min-h-[70vh] lg:min-h-[75vh] h-full">
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <AnimatePresence initial={false}>
-          {messages.map((message) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className={`flex items-start gap-3 mb-4`}
-            >
-              <div
-                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
-                ${message.role === "assistant" ? "bg-primary/10" : "bg-white/10"}`}
+    <div className="flex flex-col h-[70vh] lg:h-[75vh]">
+      <ScrollArea className="flex-1 px-4">
+        <div className="py-4 space-y-4">
+          <AnimatePresence initial={false}>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className={`flex items-start gap-3`}
               >
-                {message.role === "assistant" ? (
-                  <Bot className="w-5 h-5 text-primary" />
-                ) : (
-                  <User className="w-5 h-5 text-white/90" />
-                )}
-              </div>
-              <Card
-                className={`flex-1 p-3 text-white/90 whitespace-pre-wrap
-                ${message.role === "assistant" ? "bg-primary/10 border-primary/20" : "bg-white/10 border-white/10"}`}
+                <div
+                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center
+                  ${message.role === "assistant" ? "bg-primary/10" : "bg-white/10"}`}
+                >
+                  {message.role === "assistant" ? (
+                    <Bot className="w-5 h-5 text-primary" />
+                  ) : (
+                    <User className="w-5 h-5 text-white/90" />
+                  )}
+                </div>
+                <Card
+                  className={`flex-1 p-3 text-white/90 whitespace-pre-wrap
+                  ${message.role === "assistant" ? "bg-primary/10 border-primary/20" : "bg-white/10 border-white/10"}`}
+                >
+                  {message.content}
+                </Card>
+              </motion.div>
+            ))}
+            {isTyping && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 text-primary"
               >
-                {message.content}
-              </Card>
-            </motion.div>
-          ))}
-          {isTyping && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 text-primary"
-            >
-              <Bot className="w-6 h-6" />
-              <div className="flex gap-1">
-                <span className="animate-bounce">●</span>
-                <span className="animate-bounce delay-100">●</span>
-                <span className="animate-bounce delay-200">●</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <Bot className="w-6 h-6" />
+                <div className="flex gap-1">
+                  <span className="animate-bounce">●</span>
+                  <span className="animate-bounce delay-100">●</span>
+                  <span className="animate-bounce delay-200">●</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <div ref={messagesEndRef} />
+        </div>
       </ScrollArea>
 
       <div className="p-4 border-t border-white/10">
