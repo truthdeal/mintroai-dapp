@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 30 // saniye cinsinden maksimum süre
 
 export async function POST(req: NextRequest) {
-  try {
+    try {
     const { sessionId, chatInput } = await req.json()
 
     // Timeout kontrolü için Promise.race kullanımı
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       setTimeout(() => reject(new Error('Request timeout')), 25000) // 25 saniye
     })
 
-    const fetchPromise = fetch(CHAT_URL, {
+    const fetchPromise = fetch(`${CHAT_URL}/${sessionId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
