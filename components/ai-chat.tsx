@@ -51,17 +51,23 @@ export function AIChat({ creationType }: AIChatProps) {
   })
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" })
+    }
   }
 
   useEffect(() => {
-    scrollToBottom()
+    // Her yeni mesajda scroll yap
+    if (messages.length > 0) {
+      scrollToBottom()
+    }
   }, [messages])
 
   const sendMessage = async (message: string) => {
     if (!message.trim()) return
 
     try {
+      // Kullanıcı mesajını ekle
       setMessages(prev => [...prev, { 
         id: generateId(),
         role: 'user', 
@@ -128,12 +134,13 @@ export function AIChat({ creationType }: AIChatProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!input.trim()) return
     sendMessage(input)
   }
 
   return (
-    <div className="flex flex-col h-[70vh] lg:h-[75vh]">
-      <ScrollArea className="flex-1 px-4">
+    <div className="flex flex-col h-[70vh] lg:h-[75vh] overflow-hidden">
+      <ScrollArea className="flex-1 px-4 overflow-y-auto">
         <div className="py-4 space-y-4">
           <AnimatePresence initial={false}>
             {messages.map((message) => (
@@ -178,7 +185,7 @@ export function AIChat({ creationType }: AIChatProps) {
               </motion.div>
             )}
           </AnimatePresence>
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-0" />
         </div>
       </ScrollArea>
 
