@@ -24,20 +24,10 @@ const tokenFormSchema = z.object({
   mintable: z.boolean(),
   burnable: z.boolean(),
   pausable: z.boolean(),
-  maxWallet: z.boolean(),
+  blacklist: z.boolean(),
   maxTx: z.boolean(),
   maxTxAmount: z.string(),
-  blacklist: z.boolean(),
-  enableTrading: z.boolean(),
-  // buyTax: z.number().min(0).max(20),
-  // sellTax: z.number().min(0).max(20),
   transferTax: z.number().min(0).max(30),
-  enableLiquidity: z.boolean(),
-  autoBurn: z.boolean(),
-  autoBurnAmount: z.number(),
-  enableDividends: z.boolean(),
-  claimWait: z.number(),
-  minimumAmount: z.number(),
   antiBot: z.boolean(),
   cooldownTime: z.number(),
 })
@@ -51,25 +41,15 @@ export function TokenCreationForm() {
     defaultValues: {
       name: "",
       symbol: "",
-      decimals: 0,
+      decimals: 18,
       initialSupply: "",
       mintable: false,
       burnable: false,
       pausable: false,
-      maxWallet: false,
       maxTx: false,
       maxTxAmount: "",
       blacklist: false,
-      enableTrading: false,
-      // buyTax: 0,
-      // sellTax: 0,
       transferTax: 0,
-      enableLiquidity: false,
-      autoBurn: false,
-      autoBurnAmount: 0,
-      enableDividends: false,
-      claimWait: 0,
-      minimumAmount: 0,
       antiBot: false,
       cooldownTime: 0,
     },
@@ -86,9 +66,6 @@ export function TokenCreationForm() {
     blacklist: 'features',
     maxTx: 'limits',
     maxTxAmount: 'limits',
-    maxWallet: 'limits',
-    // buyTax: 'taxes',
-    // sellTax: 'taxes',
     transferTax: 'taxes',
     antiBot: 'security',
     cooldownTime: 'security',
@@ -158,8 +135,26 @@ export function TokenCreationForm() {
   })
 
   const onSubmit = (values: TokenFormValues) => {
-    console.log('Form submitted:', values)
-    // Submit işlemi daha sonra eklenecek
+    const contractData = {
+      contractName: values.name,
+      tokenName: values.name,
+      tokenSymbol: values.symbol,
+      decimals: values.decimals,
+      initialSupply: values.initialSupply,
+      ownerAddress: "0x0000000000000000000000000000000000000000", 
+      mintable: values.mintable,
+      burnable: values.burnable,
+      pausable: values.pausable,
+      blacklist: values.blacklist,
+      maxTx: values.maxTx,
+      maxTxAmount: values.maxTxAmount,
+      transferTax: values.transferTax,
+      antiBot: values.antiBot,
+      cooldownTime: values.cooldownTime,
+    };
+
+    console.log('Contract data to send:', contractData);
+    // Make API call to contract generator service
   }
 
   // Input wrapper component'i
