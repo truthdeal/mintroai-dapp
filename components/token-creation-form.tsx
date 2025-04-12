@@ -137,9 +137,7 @@ export function TokenCreationForm() {
   })
 
   const onSubmit = (values: TokenFormValues) => {
-    // Check if wallet is connected
     if (!address) {
-      // You might want to show an error message or toast notification
       console.error('Please connect your wallet first');
       return;
     }
@@ -165,8 +163,8 @@ export function TokenCreationForm() {
 
     console.log('Contract data to send:', contractData);
     
-    // Make API call to contract generator service
-    fetch(process.env.NEXT_PUBLIC_CONTRACT_GENERATOR_URL + '/api/generate-contract', {
+    // Call your Next.js API endpoint instead
+    fetch('/api/create-contract', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -175,18 +173,18 @@ export function TokenCreationForm() {
     })
     .then(response => {
       if (!response.ok) {
-        throw new Error('Failed to generate contract');
+        throw new Error('Failed to create contract');
       }
       return response.json();
     })
     .then(data => {
-      console.log('Contract generated:', data);
-      // Handle success - maybe show a success message or redirect
+      console.log('Contract created:', data);
+      // Handle success
     })
     .catch(error => {
-      console.error('Error generating contract:', error);
-      // Handle error - show error message to user
-    }); 
+      console.error('Error creating contract:', error);
+      // Handle error
+    });
   }
 
   // Input wrapper component'i
