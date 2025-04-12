@@ -124,16 +124,16 @@ export function TokenConfirmationDialog({
           </div>
         </div>
 
-        <AlertDialogFooter className="mt-4 flex-col space-y-2">
+        <AlertDialogFooter className="mt-4 flex gap-2">
           <AlertDialogCancel 
             onClick={onCancel}
-            className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
+            className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-10"
           >
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="w-full bg-primary hover:bg-primary/90 text-white"
+            className="flex-1 bg-primary hover:bg-primary/90 text-white h-10"
           >
             Create Token
           </AlertDialogAction>
