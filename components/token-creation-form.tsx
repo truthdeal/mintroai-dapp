@@ -29,16 +29,16 @@ const tokenFormSchema = z.object({
   maxTxAmount: z.string(),
   blacklist: z.boolean(),
   enableTrading: z.boolean(),
-  buyTax: z.number().min(0).max(100),
-  sellTax: z.number().min(0).max(100),
-  transferTax: z.number().min(0).max(100),
+  // buyTax: z.number().min(0).max(20),
+  // sellTax: z.number().min(0).max(20),
+  transferTax: z.number().min(0).max(30),
   enableLiquidity: z.boolean(),
   autoBurn: z.boolean(),
   autoBurnAmount: z.number(),
   enableDividends: z.boolean(),
   claimWait: z.number(),
   minimumAmount: z.number(),
-  antibot: z.boolean(),
+  antiBot: z.boolean(),
   cooldownTime: z.number(),
 })
 
@@ -61,8 +61,8 @@ export function TokenCreationForm() {
       maxTxAmount: "",
       blacklist: false,
       enableTrading: false,
-      buyTax: 0,
-      sellTax: 0,
+      // buyTax: 0,
+      // sellTax: 0,
       transferTax: 0,
       enableLiquidity: false,
       autoBurn: false,
@@ -70,7 +70,7 @@ export function TokenCreationForm() {
       enableDividends: false,
       claimWait: 0,
       minimumAmount: 0,
-      antibot: false,
+      antiBot: false,
       cooldownTime: 0,
     },
   })
@@ -83,13 +83,14 @@ export function TokenCreationForm() {
     mintable: 'features',
     burnable: 'features',
     pausable: 'features',
+    blacklist: 'features',
     maxTx: 'limits',
     maxTxAmount: 'limits',
     maxWallet: 'limits',
-    buyTax: 'taxes',
-    sellTax: 'taxes',
+    // buyTax: 'taxes',
+    // sellTax: 'taxes',
     transferTax: 'taxes',
-    antibot: 'security',
+    antiBot: 'security',
     cooldownTime: 'security',
   }
 
@@ -302,7 +303,7 @@ export function TokenCreationForm() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="grid gap-4 pt-4">
-              {["mintable", "burnable", "pausable"].map((feature) => (
+              {["mintable", "burnable", "pausable", "blacklist"].map((feature) => (
                 <FormField
                   key={feature}
                   control={form.control}
@@ -394,7 +395,7 @@ export function TokenCreationForm() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="grid gap-4 pt-4">
-              {["buyTax", "sellTax", "transferTax"].map((tax) => (
+              {[/* "buyTax", "sellTax", */ "transferTax"].map((tax) => (
                 <FormField
                   key={tax}
                   control={form.control}
@@ -433,7 +434,7 @@ export function TokenCreationForm() {
             <AccordionContent className="space-y-4 pt-4">
               <FormField
                 control={form.control}
-                name="antibot"
+                name="antiBot"
                 render={({ field: { value, onChange, ...field } }) => (
                   <FormItem className="flex items-center space-x-3 space-y-0">
                     <FormControl>
@@ -443,7 +444,7 @@ export function TokenCreationForm() {
                           onChange(checked === true)
                         }}
                         className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                        isUpdated={updatedFields.has("antibot")}
+                        isUpdated={updatedFields.has("antiBot")}
                         {...field}
                       />
                     </FormControl>
@@ -492,4 +493,3 @@ export function TokenCreationForm() {
     </Form>
   )
 }
-
