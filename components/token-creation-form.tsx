@@ -15,6 +15,7 @@ import { type CheckedState } from "@radix-ui/react-checkbox"
 import { Coins, Shield, Gauge, Percent, Sparkles } from "lucide-react"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import { useSession } from "@/hooks/useSession"
+import { useAccount } from 'wagmi'
 
 const tokenFormSchema = z.object({
   name: z.string().min(1, "Token name is required"),
@@ -26,7 +27,7 @@ const tokenFormSchema = z.object({
   pausable: z.boolean(),
   blacklist: z.boolean(),
   maxTx: z.boolean(),
-  maxTxAmount: z.string(),
+  maxTxAmount: z.number().min(0),
   transferTax: z.number().min(0).max(30),
   antiBot: z.boolean(),
   cooldownTime: z.number(),
@@ -36,6 +37,7 @@ type TokenFormValues = z.infer<typeof tokenFormSchema>
 
 export function TokenCreationForm() {
   const { sessionId, isInitialized } = useSession()
+  const { address } = useAccount()
   const form = useForm<TokenFormValues>({
     resolver: zodResolver(tokenFormSchema),
     defaultValues: {
@@ -47,7 +49,7 @@ export function TokenCreationForm() {
       burnable: false,
       pausable: false,
       maxTx: false,
-      maxTxAmount: "",
+      maxTxAmount: 0,
       blacklist: false,
       transferTax: 0,
       antiBot: false,
@@ -135,13 +137,21 @@ export function TokenCreationForm() {
   })
 
   const onSubmit = (values: TokenFormValues) => {
+    // Check if wallet is connected
+    if (!address) {
+      // You might want to show an error message or toast notification
+      console.error('Please connect your wallet first');
+      return;
+    }
+
     const contractData = {
+      chatId: sessionId,
       contractName: values.name,
       tokenName: values.name,
       tokenSymbol: values.symbol,
       decimals: values.decimals,
       initialSupply: values.initialSupply,
-      ownerAddress: "0x0000000000000000000000000000000000000000", 
+      ownerAddress: address,
       mintable: values.mintable,
       burnable: values.burnable,
       pausable: values.pausable,
@@ -154,7 +164,29 @@ export function TokenCreationForm() {
     };
 
     console.log('Contract data to send:', contractData);
+    
     // Make API call to contract generator service
+    fetch(process.env.NEXT_PUBLIC_CONTRACT_GENERATOR_URL + '/api/generate-contract', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(contractData),
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to generate contract');
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Contract generated:', data);
+      // Handle success - maybe show a success message or redirect
+    })
+    .catch(error => {
+      console.error('Error generating contract:', error);
+      // Handle error - show error message to user
+    }); 
   }
 
   // Input wrapper component'i
