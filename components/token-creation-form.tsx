@@ -136,7 +136,7 @@ export function TokenCreationForm() {
     console.log('Updated form values:', form.getValues())
   })
 
-  const onSubmit = (values: TokenFormValues) => {
+  const onSubmit = async (values: TokenFormValues) => {
     if (!address) {
       console.error('Please connect your wallet first');
       return;
@@ -161,30 +161,43 @@ export function TokenCreationForm() {
       cooldownTime: values.cooldownTime,
     };
 
-    console.log('Contract data to send:', contractData);
-    
-    // Call your Next.js API endpoint instead
-    fetch('/api/create-contract', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(contractData),
-    })
-    .then(response => {
-      if (!response.ok) {
+    try {
+      // 1. Contract Creation
+      const createResponse = await fetch('/api/create-contract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contractData),
+      });
+
+      if (!createResponse.ok) {
         throw new Error('Failed to create contract');
       }
-      return response.json();
-    })
-    .then(data => {
-      console.log('Contract created:', data);
-      // Handle success
-    })
-    .catch(error => {
-      console.error('Error creating contract:', error);
+
+      const createData = await createResponse.json();
+      console.log('Contract created:', createData);
+
+      // 2. Contract Compilation - only if creation was successful
+      const compileResponse = await fetch('/api/compile-contract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId: sessionId }),
+      });
+
+      if (!compileResponse.ok) {
+        throw new Error('Failed to compile contract');
+      }
+
+      const compileData = await compileResponse.json();
+      console.log('Contract compiled:', compileData);
+
+    } catch (error) {
+      console.error('Error:', error);
       // Handle error
-    });
+    }
   }
 
   // Input wrapper component'i
