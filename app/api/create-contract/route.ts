@@ -40,12 +40,12 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in contract generation:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate contract';
     return NextResponse.json(
-      { error: error.message || 'Failed to generate contract' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
