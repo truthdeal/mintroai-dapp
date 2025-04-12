@@ -138,7 +138,7 @@ export function TokenCreationForm() {
     console.log('Updated form values:', form.getValues())
   })
 
-  const onSubmit = async (values: TokenFormValues) => {
+  const onSubmit = async () => {
     if (!address) {
       console.error('Please connect your wallet first');
       return;
