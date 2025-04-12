@@ -413,17 +413,20 @@ export function TokenCreationForm() {
                 {form.watch("maxTx") && (
                   <FormField
                     control={form.control}
-                    name="maxTxAmount"
-                    render={({ field }) => (
+                    name="maxTxAmount" 
+                    render={({ field: { value, onChange, ...field } }) => (
                       <FormItem>
                         <FormLabel className="text-white">Max Transaction Amount</FormLabel>
                         <FormControl>
                           <AnimatedFormInput
+                            type="number"
                             placeholder="10000"
-                            {...field}
+                            value={value.toString()}
+                            onChange={(e) => onChange(Number(e.target.value))}
                             className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                               focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
                             isUpdated={updatedFields.has("maxTxAmount")}
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage className="text-red-400" />

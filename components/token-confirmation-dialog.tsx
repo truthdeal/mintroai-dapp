@@ -13,6 +13,27 @@ interface TokenConfirmationDialogProps {
   formData: TokenFormValues
 }
 
+function StatusBadge({ enabled }: { enabled: boolean }) {
+  return (
+    <span className={cn(
+      "px-2 py-0.5 rounded-full text-xs font-medium",
+      enabled 
+        ? "bg-green-500/20 text-green-400 border border-green-500/20" 
+        : "bg-red-500/10 text-red-400 border border-red-500/20"
+    )}>
+      {enabled ? 'Enabled' : 'Disabled'}
+    </span>
+  )
+}
+
+function ValueDisplay({ value, symbol }: { value: string | number, symbol?: string }) {
+  return (
+    <span className="text-white font-medium bg-white/5 px-2 py-0.5 rounded">
+      {value}{symbol}
+    </span>
+  )
+}
+
 export function TokenConfirmationDialog({
   isOpen,
   onConfirm,
@@ -24,7 +45,7 @@ export function TokenConfirmationDialog({
       <AlertDialogContent className={cn(
         "bg-black/90 border-white/10 backdrop-blur-xl text-white",
         "w-[90vw] md:w-[400px]",
-        "p-4 shadow-lg",
+        "p-3",
         "overflow-y-auto rounded-lg",
         "max-h-[95vh] md:max-h-[85vh]"
       )}>
@@ -36,36 +57,36 @@ export function TokenConfirmationDialog({
           <span className="sr-only">Close</span>
         </button>
 
-        <AlertDialogHeader className="space-y-2">
-          <AlertDialogTitle className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/80">
+        <AlertDialogHeader className="space-y-1">
+          <AlertDialogTitle className="text-base font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/80">
             Confirm Token Creation
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-white/70 text-sm">
+          <AlertDialogDescription className="text-white/70 text-xs">
             You are about to create a new token with the following parameters:
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="mt-3 space-y-3">
-          <div className="bg-white/5 p-3 rounded-lg border border-white/10 space-y-3">
+        <div className="mt-2 space-y-2">
+          <div className="bg-white/5 p-2 rounded-lg border border-white/10 space-y-3">
             {/* Basic Details */}
             <div>
-              <div className="text-white/50 text-sm font-medium mb-1.5">Basic Details</div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+              <div className="text-white/50 text-sm font-medium mb-2">Basic Details</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <span className="text-white/50">Token Name:</span>
-                <span className="text-white">{formData.name}</span>
+                <ValueDisplay value={formData.name} />
                 <span className="text-white/50">Symbol:</span>
-                <span className="text-white">{formData.symbol}</span>
+                <ValueDisplay value={formData.symbol} />
                 <span className="text-white/50">Initial Supply:</span>
-                <span className="text-white">{formData.initialSupply} {formData.symbol}</span>
+                <ValueDisplay value={formData.initialSupply} symbol={` ${formData.symbol}`} />
                 <span className="text-white/50">Decimals:</span>
-                <span className="text-white">{formData.decimals}</span>
+                <ValueDisplay value={formData.decimals} />
               </div>
             </div>
 
             {/* Features */}
-            <div className="pt-3 border-t border-white/10">
-              <div className="text-white/50 text-sm font-medium mb-1.5">Features</div>
-              <div className="flex flex-wrap gap-1.5">
+            <div className="pt-4 border-t border-white/10">
+              <div className="text-white/50 text-sm font-medium mb-2">Features</div>
+              <div className="flex flex-wrap gap-2">
                 {[
                   { key: 'mintable', label: 'Mintable' },
                   { key: 'burnable', label: 'Burnable' },
@@ -75,56 +96,63 @@ export function TokenConfirmationDialog({
                 ].map(({ key, label }) => (
                   <span
                     key={key}
-                    className={`px-2 py-0.5 rounded-full text-xs ${
+                    className={cn(
+                      "px-2 py-1 rounded-full text-xs flex items-center gap-1.5",
                       formData[key as keyof TokenFormValues]
-                        ? 'bg-primary/20 text-primary'
-                        : 'bg-white/5 text-white/50'
-                    }`}
+                        ? "bg-primary/20 text-primary border border-primary/20"
+                        : "bg-white/5 text-white/50 border border-white/10"
+                    )}
                   >
-                    {label}: {formData[key as keyof TokenFormValues] ? 'On' : 'Off'}
+                    <span className={cn(
+                      "w-2 h-2 rounded-full",
+                      formData[key as keyof TokenFormValues]
+                        ? "bg-primary"
+                        : "bg-white/20"
+                    )} />
+                    {label}
                   </span>
                 ))}
               </div>
             </div>
 
             {/* Transaction Limits */}
-            <div className="pt-3 border-t border-white/10">
-              <div className="text-white/50 text-sm font-medium mb-1.5">Transaction Limits</div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+            <div className="pt-4 border-t border-white/10">
+              <div className="text-white/50 text-sm font-medium mb-2">Transaction Limits</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <span className="text-white/50">Max Transaction:</span>
-                <span className="text-white">{formData.maxTx ? 'Enabled' : 'Disabled'}</span>
+                <StatusBadge enabled={formData.maxTx} />
                 <span className="text-white/50">Max Amount:</span>
-                <span className="text-white">{formData.maxTxAmount} {formData.symbol}</span>
+                <ValueDisplay value={formData.maxTxAmount} symbol={` ${formData.symbol}`} />
               </div>
             </div>
 
             {/* Taxes */}
-            <div className="pt-3 border-t border-white/10">
-              <div className="text-white/50 text-sm font-medium mb-1.5">Taxes</div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+            <div className="pt-4 border-t border-white/10">
+              <div className="text-white/50 text-sm font-medium mb-2">Taxes</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <span className="text-white/50">Transfer Tax:</span>
-                <span className="text-white">{formData.transferTax}%</span>
+                <ValueDisplay value={`${formData.transferTax}%`} />
               </div>
             </div>
 
             {/* Security Settings */}
-            <div className="pt-3 border-t border-white/10">
-              <div className="text-white/50 text-sm font-medium mb-1.5">Security Settings</div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+            <div className="pt-4 border-t border-white/10">
+              <div className="text-white/50 text-sm font-medium mb-2">Security Settings</div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <span className="text-white/50">Anti-Bot:</span>
-                <span className="text-white">{formData.antiBot ? 'Enabled' : 'Disabled'}</span>
+                <StatusBadge enabled={formData.antiBot} />
                 <span className="text-white/50">Cooldown:</span>
-                <span className="text-white">{formData.cooldownTime}s</span>
+                <ValueDisplay value={`${formData.cooldownTime}s`} />
               </div>
             </div>
           </div>
 
           <div className="text-white/70 text-xs">
-            Please review the details carefully before proceeding. This action cannot be undone.
+            Please review the details carefully before proceeding.
           </div>
         </div>
 
-        <AlertDialogFooter className="mt-4 flex gap-2">
+        <AlertDialogFooter className="mt-2 flex gap-2">
           <AlertDialogCancel 
             onClick={onCancel}
             className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-10"
