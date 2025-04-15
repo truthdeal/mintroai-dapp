@@ -47,45 +47,47 @@ export function TokenConfirmationDialog({
     switch (deploymentStatus) {
       case 'creating':
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2 w-full">
             <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            <span>Creating Contract...</span>
+            <span className="text-sm">Creating...</span>
           </div>
         )
       case 'compiling':
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2 w-full">
             <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            <span>Compiling Contract...</span>
+            <span className="text-sm">Compiling...</span>
           </div>
         )
       case 'deploying':
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2 w-full">
             <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            <span>Deploying Contract...</span>
+            <span className="text-sm">Deploying...</span>
           </div>
         )
       case 'success':
         return (
-          <div className="flex items-center gap-2 text-white">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-center gap-2 w-full text-white">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span>Deployment Successful!</span>
+            <span className="text-sm">Success!</span>
           </div>
         )
       case 'error':
         return (
-          <div className="flex items-center gap-2 text-white">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-center gap-2 w-full text-white">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            <span>Deployment Failed</span>
+            <span className="text-sm">Failed</span>
           </div>
         )
       default:
-        return 'Create Token'
+        return (
+          <span className="text-sm">Create Token</span>
+        )
     }
   }
 
@@ -229,7 +231,10 @@ export function TokenConfirmationDialog({
           <AlertDialogFooter className="mt-3 flex gap-2">
             <button
               onClick={onCancel}
-              className="flex-1 bg-white/5 hover:bg-white/10 text-white font-medium py-2.5 rounded-lg transition-colors"
+              className={cn(
+                "flex-1 min-w-[140px] bg-white/5 hover:bg-white/10 text-white",
+                "font-medium py-2.5 rounded-lg transition-colors text-sm"
+              )}
               disabled={deploymentStatus !== 'idle' && deploymentStatus !== 'error'}
             >
               {deploymentStatus === 'error' ? 'Close' : 'Cancel'}
@@ -237,7 +242,7 @@ export function TokenConfirmationDialog({
             <button
               onClick={onConfirm}
               className={cn(
-                "flex-1 py-2.5 rounded-lg font-medium transition-colors",
+                "flex-1 min-w-[140px] py-2.5 rounded-lg font-medium transition-colors text-sm",
                 deploymentStatus === 'success' 
                   ? "bg-green-500 hover:bg-green-600" 
                   : deploymentStatus === 'error'
