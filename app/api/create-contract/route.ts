@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     const contractData: ContractData = await request.json();
 
     // Make the request to your contract generator service
-    const response = await fetch(`${process.env.CONTRACT_GENERATOR_URL}/api/generate-contract`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_CONTRACT_GENERATOR_URL}/api/generate-contract`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

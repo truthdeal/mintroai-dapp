@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await fetch(
-      `${process.env.CONTRACT_GENERATOR_URL}/api/compile-contract/${chatId}`,
+      `${process.env.NEXT_PUBLIC_CONTRACT_GENERATOR_URL}/api/compile-contract/${chatId}`,
       {
         method: 'POST',
         headers: {
