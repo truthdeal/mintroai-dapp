@@ -32,7 +32,7 @@ export function TokenSuccessDialog({
 
   return (
     <AlertDialog open={isOpen}>
-      <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl text-white p-6 max-w-md">
+      <AlertDialogContent className="bg-black/90 border-white/10 backdrop-blur-xl text-white p-6 w-[90vw] md:w-[500px]">
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
