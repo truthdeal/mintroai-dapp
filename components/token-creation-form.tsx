@@ -67,7 +67,7 @@ export function TokenCreationForm() {
   const [isDeploying, setIsDeploying] = React.useState(false)
   const [deploymentStatus, setDeploymentStatus] = React.useState<'idle' | 'creating' | 'compiling' | 'deploying' | 'success' | 'error'>('idle')
 
-  const { deploy, isPending, isSuccess, error } = useTokenDeploy()
+  const { deploy, isPending, isWaiting, isSuccess, error, hash } = useTokenDeploy()
 
   // Section'ları field'larla eşleştir
   const fieldToSection: { [key: string]: string } = {
@@ -147,19 +147,19 @@ export function TokenCreationForm() {
 
   // useEffect to track deployment status
   React.useEffect(() => {
-    if (isPending) {
+    if (isPending || isWaiting) {
       setDeploymentStatus('deploying')
     } else if (isSuccess) {
       setDeploymentStatus('success')
-      // Başarılı olduğunda dialog'u kapat
+      console.log('Transaction hash:', hash)
       setTimeout(() => {
         setShowConfirmation(false)
         setDeploymentStatus('idle')
-      }, 2000) // 2 saniye sonra kapat
+      }, 2000)
     } else if (error) {
       setDeploymentStatus('error')
     }
-  }, [isPending, isSuccess, error])
+  }, [isPending, isWaiting, isSuccess, error, hash])
 
   const onSubmit = async () => {
     if (!address) {

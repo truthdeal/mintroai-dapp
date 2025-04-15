@@ -1,11 +1,14 @@
-import { useWriteContract, useChainId, useAccount } from 'wagmi'
+import { useWriteContract, useChainId, useAccount, useWaitForTransactionReceipt } from 'wagmi'
 import { SUPPORTED_NETWORKS } from '@/config/networks'
 import { FACTORY_ABI } from '@/config/factory-abi'
 
 export function useTokenDeploy() {
   const chainId = useChainId()
   const { address } = useAccount()
-  const { writeContract: deployToken, isPending, isSuccess, error } = useWriteContract()
+  const { writeContract: deployToken, isPending, data: hash } = useWriteContract()
+  const { isLoading: isWaiting, isSuccess, error } = useWaitForTransactionReceipt({
+    hash,
+  })
 
   const deploy = async (bytecode: string) => {
     if (!chainId) throw new Error('No chain selected')
@@ -21,5 +24,12 @@ export function useTokenDeploy() {
     })
   }
 
-  return { deploy, isPending, isSuccess, error }
+  return { 
+    deploy, 
+    isPending, // MetaMask onayı beklerken
+    isWaiting, // Transaction mine edilmeyi beklerken
+    isSuccess,  // Transaction başarıyla mine edildiğinde
+    error,
+    hash // Transaction hash
+  }
 } 
