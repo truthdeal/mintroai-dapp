@@ -6,7 +6,12 @@ export function useTokenDeploy() {
   const chainId = useChainId()
   const { address } = useAccount()
   const { writeContract: deployToken, isPending, data: hash } = useWriteContract()
-  const { isLoading: isWaiting, isSuccess, error } = useWaitForTransactionReceipt({
+  const { 
+    isLoading: isWaiting, 
+    isSuccess, 
+    error,
+    data: receipt // Transaction receipt - içinde deployedAddress var
+  } = useWaitForTransactionReceipt({
     hash,
   })
 
@@ -30,6 +35,7 @@ export function useTokenDeploy() {
     isWaiting, // Transaction mine edilmeyi beklerken
     isSuccess,  // Transaction başarıyla mine edildiğinde
     error,
-    hash // Transaction hash
+    hash, // Transaction hash
+    receipt // Transaction receipt - içinde logs, events ve diğer bilgiler var
   }
 } 
