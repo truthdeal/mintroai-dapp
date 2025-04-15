@@ -17,6 +17,7 @@ import { useWebSocket } from "@/hooks/useWebSocket"
 import { useSession } from "@/hooks/useSession"
 import { useAccount } from 'wagmi'
 import { TokenConfirmationDialog } from "@/components/token-confirmation-dialog"
+import { useTokenDeploy } from '@/hooks/useTokenDeploy'
 
 const tokenFormSchema = z.object({
   name: z.string().min(1, "Token name is required"),
@@ -61,6 +62,8 @@ export function TokenCreationForm() {
   const [updatedFields, setUpdatedFields] = React.useState<Set<string>>(new Set())
   const [updatedSections, setUpdatedSections] = React.useState<Set<string>>(new Set())
   const [showConfirmation, setShowConfirmation] = React.useState(false);
+
+  const { deploy, isPending, isSuccess, error } = useTokenDeploy()
 
   // Section'ları field'larla eşleştir
   const fieldToSection: { [key: string]: string } = {
@@ -149,7 +152,6 @@ export function TokenCreationForm() {
   }
   
   const handleConfirm = async () => {
-    // Your existing submission logic here
     const contractData = {
       chatId: sessionId,
       contractName: form.getValues().name,
@@ -186,7 +188,7 @@ export function TokenCreationForm() {
       const createData = await createResponse.json();
       console.log('Contract created:', createData);
 
-      // 2. Contract Compilation - only if creation was successful
+      // 2. Contract Compilation
       const compileResponse = await fetch('/api/compile-contract', {
         method: 'POST',
         headers: {
@@ -201,6 +203,9 @@ export function TokenCreationForm() {
 
       const compileData = await compileResponse.json();
       console.log('Contract compiled:', compileData);
+
+      // 3. Deploy contract using useTokenDeploy
+      await deploy(compileData.bytecode);
 
     } catch (error) {
       console.error('Error:', error);
