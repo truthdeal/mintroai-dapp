@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 import confetti from 'canvas-confetti'
+import { useChainId } from 'wagmi'
+import { type Chain, mainnet, polygon, optimism, arbitrum, base, zora, bscTestnet, bsc } from 'viem/chains'
+import { ExternalLink } from 'lucide-react'
 
 interface TokenSuccessDialogProps {
   isOpen: boolean
@@ -20,6 +23,29 @@ export function TokenSuccessDialog({
   tokenName,
   tokenSymbol
 }: TokenSuccessDialogProps) {
+  const chainId = useChainId()
+
+  // Chain'e göre block explorer URL'ini bul
+  const getExplorerUrl = () => {
+    const chains: Record<number, Chain> = {
+      [mainnet.id]: mainnet,
+      [polygon.id]: polygon,
+      [optimism.id]: optimism,
+      [arbitrum.id]: arbitrum,
+      [base.id]: base,
+      [zora.id]: zora,
+      [bscTestnet.id]: bscTestnet,
+      [bsc.id]: bsc,
+    }
+    
+    const chain = chains[chainId]
+    if (!chain?.blockExplorers?.default?.url) return null
+    
+    return `${chain.blockExplorers.default.url}/address/${tokenAddress}`
+  }
+
+  const explorerUrl = getExplorerUrl()
+
   React.useEffect(() => {
     if (isOpen) {
       confetti({
@@ -67,6 +93,17 @@ export function TokenSuccessDialog({
                 <div className="font-mono text-sm break-all bg-white/5 p-2 rounded border border-white/10">
                   {tokenAddress}
                 </div>
+                {explorerUrl && (
+                  <a 
+                    href={explorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors mt-1"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>View on Block Explorer</span>
+                  </a>
+                )}
               </div>
             </div>
 
