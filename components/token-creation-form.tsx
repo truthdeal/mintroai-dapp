@@ -18,6 +18,7 @@ import { useSession } from "@/hooks/useSession"
 import { useAccount } from 'wagmi'
 import { TokenConfirmationDialog } from "@/components/token-confirmation-dialog"
 import { useTokenDeploy } from '@/hooks/useTokenDeploy'
+import { TokenSuccessDialog } from "@/components/token-success-dialog"
 
 const tokenFormSchema = z.object({
   name: z.string().min(1, "Token name is required"),
@@ -66,6 +67,8 @@ export function TokenCreationForm() {
   const [isCompiling, setIsCompiling] = React.useState(false)
   const [isDeploying, setIsDeploying] = React.useState(false)
   const [deploymentStatus, setDeploymentStatus] = React.useState<'idle' | 'creating' | 'compiling' | 'deploying' | 'success' | 'error'>('idle')
+  const [showSuccess, setShowSuccess] = React.useState(false)
+  const [deployedAddress, setDeployedAddress] = React.useState<string | null>(null)
 
   const { deploy, isPending, isWaiting, isSuccess, error, hash, receipt } = useTokenDeploy()
 
@@ -151,16 +154,17 @@ export function TokenCreationForm() {
       setDeploymentStatus('deploying')
     } else if (isSuccess && receipt) {
       setDeploymentStatus('success')
-      // Transaction receipt'inden deployed contract address'i al
-      const deployedAddress = receipt.logs[0].address // veya receipt'ten gelen uygun değer
+      const deployedAddr = receipt.logs[0].address
+      setDeployedAddress(deployedAddr)
       console.log('Transaction hash:', hash)
-      console.log('Deployed contract address:', deployedAddress)
-      console.log('Full receipt:', receipt)
+      console.log('Deployed contract address:', deployedAddr)
       
+      // Confirmation dialog'u kapat ve success dialog'u aç
       setTimeout(() => {
         setShowConfirmation(false)
         setDeploymentStatus('idle')
-      }, 2000)
+        setShowSuccess(true)
+      }, 1000)
     } else if (error) {
       setDeploymentStatus('error')
     }
@@ -584,6 +588,16 @@ export function TokenCreationForm() {
         formData={form.getValues()}
         deploymentStatus={deploymentStatus}
       />
+
+      {deployedAddress && (
+        <TokenSuccessDialog
+          isOpen={showSuccess}
+          onClose={() => setShowSuccess(false)}
+          tokenAddress={deployedAddress}
+          tokenName={form.getValues().name}
+          tokenSymbol={form.getValues().symbol}
+        />
+      )}
     </>
   )
 }
