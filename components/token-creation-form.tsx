@@ -63,9 +63,6 @@ export function TokenCreationForm() {
   const [updatedFields, setUpdatedFields] = React.useState<Set<string>>(new Set())
   const [updatedSections, setUpdatedSections] = React.useState<Set<string>>(new Set())
   const [showConfirmation, setShowConfirmation] = React.useState(false);
-  const [isCreating, setIsCreating] = React.useState(false)
-  const [isCompiling, setIsCompiling] = React.useState(false)
-  const [isDeploying, setIsDeploying] = React.useState(false)
   const [deploymentStatus, setDeploymentStatus] = React.useState<'idle' | 'creating' | 'compiling' | 'deploying' | 'success' | 'error'>('idle')
   const [showSuccess, setShowSuccess] = React.useState(false)
   const [deployedAddress, setDeployedAddress] = React.useState<string | null>(null)
