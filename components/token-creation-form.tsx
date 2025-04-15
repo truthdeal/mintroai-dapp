@@ -62,6 +62,10 @@ export function TokenCreationForm() {
   const [updatedFields, setUpdatedFields] = React.useState<Set<string>>(new Set())
   const [updatedSections, setUpdatedSections] = React.useState<Set<string>>(new Set())
   const [showConfirmation, setShowConfirmation] = React.useState(false);
+  const [isCreating, setIsCreating] = React.useState(false)
+  const [isCompiling, setIsCompiling] = React.useState(false)
+  const [isDeploying, setIsDeploying] = React.useState(false)
+  const [deploymentStatus, setDeploymentStatus] = React.useState<'idle' | 'creating' | 'compiling' | 'deploying' | 'success' | 'error'>('idle')
 
   const { deploy, isPending, isSuccess, error } = useTokenDeploy()
 
@@ -141,6 +145,22 @@ export function TokenCreationForm() {
     console.log('Updated form values:', form.getValues())
   })
 
+  // useEffect to track deployment status
+  React.useEffect(() => {
+    if (isPending) {
+      setDeploymentStatus('deploying')
+    } else if (isSuccess) {
+      setDeploymentStatus('success')
+      // Başarılı olduğunda dialog'u kapat
+      setTimeout(() => {
+        setShowConfirmation(false)
+        setDeploymentStatus('idle')
+      }, 2000) // 2 saniye sonra kapat
+    } else if (error) {
+      setDeploymentStatus('error')
+    }
+  }, [isPending, isSuccess, error])
+
   const onSubmit = async () => {
     if (!address) {
       console.error('Please connect your wallet first');
@@ -152,26 +172,28 @@ export function TokenCreationForm() {
   }
   
   const handleConfirm = async () => {
-    const contractData = {
-      chatId: sessionId,
-      contractName: form.getValues().name,
-      tokenName: form.getValues().name,
-      tokenSymbol: form.getValues().symbol,
-      decimals: form.getValues().decimals,
-      initialSupply: form.getValues().initialSupply,
-      ownerAddress: address,
-      mintable: form.getValues().mintable,
-      burnable: form.getValues().burnable,
-      pausable: form.getValues().pausable,
-      blacklist: form.getValues().blacklist,
-      maxTx: form.getValues().maxTx,
-      maxTxAmount: form.getValues().maxTxAmount,
-      transferTax: form.getValues().transferTax,
-      antiBot: form.getValues().antiBot,
-      cooldownTime: form.getValues().cooldownTime,
-    };
-
     try {
+      // Contract Creation
+      setDeploymentStatus('creating')
+      const contractData = {
+        chatId: sessionId,
+        contractName: form.getValues().name,
+        tokenName: form.getValues().name,
+        tokenSymbol: form.getValues().symbol,
+        decimals: form.getValues().decimals,
+        initialSupply: form.getValues().initialSupply,
+        ownerAddress: address,
+        mintable: form.getValues().mintable,
+        burnable: form.getValues().burnable,
+        pausable: form.getValues().pausable,
+        blacklist: form.getValues().blacklist,
+        maxTx: form.getValues().maxTx,
+        maxTxAmount: form.getValues().maxTxAmount,
+        transferTax: form.getValues().transferTax,
+        antiBot: form.getValues().antiBot,
+        cooldownTime: form.getValues().cooldownTime,
+      };
+
       // 1. Contract Creation
       const createResponse = await fetch('/api/create-contract', {
         method: 'POST',
@@ -189,6 +211,7 @@ export function TokenCreationForm() {
       console.log('Contract created:', createData);
 
       // 2. Contract Compilation
+      setDeploymentStatus('compiling')
       const compileResponse = await fetch('/api/compile-contract', {
         method: 'POST',
         headers: {
@@ -204,14 +227,14 @@ export function TokenCreationForm() {
       const compileData = await compileResponse.json();
       console.log('Contract compiled:', compileData);
 
-      // 3. Deploy contract using useTokenDeploy
-      await deploy(compileData.bytecode);
+      // 3. Deploy contract
+      const deployResponse = await deploy(compileData.bytecode);
+      console.log('Contract deployed:', deployResponse);
+      // Not: deploy işlemi başarılı/başarısız durumu useEffect içinde takip ediliyor
 
     } catch (error) {
       console.error('Error:', error);
-      // Handle error
-    } finally {
-      setShowConfirmation(false);
+      setDeploymentStatus('error')
     }
   }
 
@@ -552,8 +575,9 @@ export function TokenCreationForm() {
       <TokenConfirmationDialog
         isOpen={showConfirmation}
         onConfirm={handleConfirm}
-        onCancel={() => setShowConfirmation(false)}
+        onCancel={() => deploymentStatus === 'idle' && setShowConfirmation(false)}
         formData={form.getValues()}
+        deploymentStatus={deploymentStatus}
       />
     </>
   )

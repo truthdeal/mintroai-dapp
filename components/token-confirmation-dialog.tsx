@@ -11,6 +11,7 @@ interface TokenConfirmationDialogProps {
   onConfirm: () => void
   onCancel: () => void
   formData: TokenFormValues
+  deploymentStatus: 'idle' | 'creating' | 'compiling' | 'deploying' | 'success' | 'error'
 }
 
 function StatusBadge({ enabled }: { enabled: boolean }) {
@@ -38,8 +39,55 @@ export function TokenConfirmationDialog({
   isOpen,
   onConfirm,
   onCancel,
-  formData
+  formData,
+  deploymentStatus
 }: TokenConfirmationDialogProps) {
+  const getButtonContent = () => {
+    switch (deploymentStatus) {
+      case 'creating':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            <span>Creating Contract...</span>
+          </div>
+        )
+      case 'compiling':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            <span>Compiling Contract...</span>
+          </div>
+        )
+      case 'deploying':
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            <span>Waiting for Confirmation...</span>
+          </div>
+        )
+      case 'success':
+        return (
+          <div className="flex items-center gap-2 text-green-400">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Deployment Successful!</span>
+          </div>
+        )
+      case 'error':
+        return (
+          <div className="flex items-center gap-2 text-red-400">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>Deployment Failed</span>
+          </div>
+        )
+      default:
+        return 'Create Token'
+    }
+  }
+
   return (
     <AlertDialog open={isOpen}>
       <AlertDialogContent className={cn(
@@ -156,14 +204,24 @@ export function TokenConfirmationDialog({
           <AlertDialogCancel 
             onClick={onCancel}
             className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white h-10"
+            disabled={deploymentStatus !== 'idle' && deploymentStatus !== 'error'}
           >
-            Cancel
+            {deploymentStatus === 'error' ? 'Close' : 'Cancel'}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="flex-1 bg-primary hover:bg-primary/90 text-white h-10"
+            className={cn(
+              "flex-1 h-10",
+              deploymentStatus === 'success' 
+                ? "bg-green-500 hover:bg-green-600" 
+                : deploymentStatus === 'error'
+                ? "bg-red-500 hover:bg-red-600"
+                : "bg-primary hover:bg-primary/90",
+              "text-white"
+            )}
+            disabled={deploymentStatus !== 'idle' && deploymentStatus !== 'error'}
           >
-            Create Token
+            {getButtonContent()}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

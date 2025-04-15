@@ -16,7 +16,8 @@ export function useTokenDeploy() {
       address: SUPPORTED_NETWORKS[chainId].factoryAddress,
       abi: FACTORY_ABI,
       functionName: 'deployBytecode',
-      args: [`0x${bytecode}` as `0x${string}`]
+      args: [`0x${bytecode}` as `0x${string}`],
+      gas: BigInt(2000000)
     })
   }
 
