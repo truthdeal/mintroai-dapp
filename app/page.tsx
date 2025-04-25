@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Brain } from "lucide-react"
 import Image from 'next/image'
 import { Card } from "@/components/ui/card"
 import { TokenCreationForm } from "@/components/token-creation-form"
