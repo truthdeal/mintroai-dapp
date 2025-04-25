@@ -1,0 +1,32 @@
+<!-- /public/logo.svg -->
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- bright edge gradient -->
+    <linearGradient id="grad-edge" x1="0" y1="0" x2="160" y2="160" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C084FC" />
+      <stop offset="1" stop-color="#6366F1" />
+    </linearGradient>
+    <!-- subtle inner fill so logo stands out on black background -->
+    <linearGradient id="grad-fill" x1="160" y1="0" x2="0" y2="160" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E1B4B" />
+      <stop offset="1" stop-color="#0F0B33" />
+    </linearGradient>
+    <!-- soft glow around strokes -->
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="7" result="coloredBlur" />
+      <feMerge>
+        <feMergeNode in="coloredBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- filled hexagon -->
+  <path d="M80 10 L133 40 L133 100 L80 130 L27 100 L27 40 Z" fill="url(#grad-fill)" stroke="url(#grad-edge)" stroke-width="8" stroke-linejoin="round" filter="url(#glow)"/>
+  <!-- inner stylised M -->
+  <path d="M45 95 V55 L80 80 L115 55 V95" stroke="url(#grad-edge)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" />
+  <!-- subtle animated spark -->
+  <circle cx="122" cy="36" r="4" fill="#C084FC">
+    <animate attributeName="r" values="4;2;4" dur="1.8s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="1;0.4;1" dur="1.8s" repeatCount="indefinite" />
+  </circle>
+</svg>

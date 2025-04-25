@@ -2,12 +2,17 @@ import '@rainbow-me/rainbowkit/styles.css'
 import "./globals.css"
 import { Inter } from "next/font/google"
 import { Providers } from "./providers"
+import type { Metadata } from 'next'
 
 const inter = Inter({ subsets: ["latin"] })
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "MintroAI DApp",
   description: "AI-powered Smart Contract Creation Platform",
+  icons: {
+    icon: '/favicon.svg', // Also supports favicon.ico
+    apple: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

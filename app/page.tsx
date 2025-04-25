@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Brain } from "lucide-react"
+import Image from 'next/image'
 import { Card } from "@/components/ui/card"
 import { TokenCreationForm } from "@/components/token-creation-form"
 import { AIChat } from "@/components/ai-chat"
@@ -29,7 +30,7 @@ export default function DappPage() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2 group">
             <div className="relative">
-              <Brain className="w-8 h-8 text-primary relative z-10" />
+              <Image src="/assets/logo-small.svg" alt="Logo" width={32} height={32} className="relative z-10" />
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/30 transition-colors" />
             </div>
             <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-white to-white/80">

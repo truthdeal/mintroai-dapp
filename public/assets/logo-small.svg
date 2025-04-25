@@ -1,0 +1,12 @@
+<!-- public/logo-small.svg -->
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <linearGradient id="edge" x1="0" y1="0" x2="160" y2="160" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#C084FC"/>
+    <stop offset="1" stop-color="#6366F1"/>
+  </linearGradient>
+
+  <path d="M80 10 L133 40 L133 100 L80 130 L27 100 L27 40 Z"
+        fill="#120d33" stroke="url(#edge)" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M45 95 V55 L80 80 L115 55 V95"
+        stroke="url(#edge)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
