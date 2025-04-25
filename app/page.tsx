@@ -33,7 +33,7 @@ export default function DappPage() {
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/30 transition-colors" />
             </div>
             <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-white to-white/80">
-              SmartAI
+              MintroAI
             </span>
           </Link>
           <CustomConnectButton />
