@@ -38,6 +38,32 @@ const tokenFormSchema = z.object({
 
 export type TokenFormValues = z.infer<typeof tokenFormSchema>
 
+// Input wrapper component'i - moved outside to prevent recreation
+const AnimatedFormInput = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement> & { isUpdated?: boolean }
+>(({ className, isUpdated, ...props }, ref) => (
+  <Input
+    ref={ref}
+    className={`${className} ${isUpdated ? 'highlight-update' : ''}`}
+    {...props}
+  />
+))
+AnimatedFormInput.displayName = 'AnimatedFormInput'
+
+// Checkbox wrapper component'i - moved outside to prevent recreation
+const AnimatedFormCheckbox = React.forwardRef<
+  HTMLButtonElement,
+  React.ComponentPropsWithoutRef<typeof Checkbox> & { isUpdated?: boolean }
+>(({ className, isUpdated, ...props }, ref) => (
+  <Checkbox
+    ref={ref}
+    className={`${className} ${isUpdated ? 'highlight-update' : ''}`}
+    {...props}
+  />
+))
+AnimatedFormCheckbox.displayName = 'AnimatedFormCheckbox'
+
 export function TokenCreationForm() {
   const { sessionId, isInitialized } = useSession()
   const { address } = useAccount()
@@ -243,32 +269,6 @@ export function TokenCreationForm() {
       setDeploymentStatus('error')
     }
   }
-
-  // Input wrapper component'i
-  const AnimatedFormInput = React.forwardRef<
-    HTMLInputElement,
-    React.InputHTMLAttributes<HTMLInputElement> & { isUpdated?: boolean }
-  >(({ className, isUpdated, ...props }, ref) => (
-    <Input
-      ref={ref}
-      className={`${className} ${isUpdated ? 'highlight-update' : ''}`}
-      {...props}
-    />
-  ))
-  AnimatedFormInput.displayName = 'AnimatedFormInput'
-
-  // Checkbox wrapper component'i
-  const AnimatedFormCheckbox = React.forwardRef<
-    HTMLButtonElement,
-    React.ComponentPropsWithoutRef<typeof Checkbox> & { isUpdated?: boolean }
-  >(({ className, isUpdated, ...props }, ref) => (
-    <Checkbox
-      ref={ref}
-      className={`${className} ${isUpdated ? 'highlight-update' : ''}`}
-      {...props}
-    />
-  ))
-  AnimatedFormCheckbox.displayName = 'AnimatedFormCheckbox'
 
   return (
     <>
