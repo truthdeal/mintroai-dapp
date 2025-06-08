@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "MintroAI DApp",
   description: "AI-powered Smart Contract Creation Platform",
   icons: {
-    icon: '/favicon.svg', // Also supports favicon.ico
+    icon: '/favicon.svg',
     apple: '/favicon.svg',
   },
 }
