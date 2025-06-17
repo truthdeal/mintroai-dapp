@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 import confetti from 'canvas-confetti'
 import { useChainId } from 'wagmi'
-import { type Chain, mainnet, polygon, optimism, arbitrum, base, zora, bscTestnet, bsc } from 'viem/chains'
+import { type Chain, /* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ bscTestnet, /* bsc */ } from 'viem/chains'
 import { ExternalLink } from 'lucide-react'
 
 interface TokenSuccessDialogProps {
@@ -28,14 +28,14 @@ export function TokenSuccessDialog({
   // Chain'e göre block explorer URL'ini bul
   const getExplorerUrl = () => {
     const chains: Record<number, Chain> = {
-      [mainnet.id]: mainnet,
-      [polygon.id]: polygon,
-      [optimism.id]: optimism,
+      // [mainnet.id]: mainnet,
+      // [polygon.id]: polygon,
+      // [optimism.id]: optimism,
       [arbitrum.id]: arbitrum,
-      [base.id]: base,
-      [zora.id]: zora,
+      // [base.id]: base,
+      // [zora.id]: zora,
       [bscTestnet.id]: bscTestnet,
-      [bsc.id]: bsc,
+      // [bsc.id]: bsc,
     }
     
     const chain = chains[chainId]

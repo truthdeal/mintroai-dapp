@@ -7,7 +7,7 @@ import {
   darkTheme,
 } from '@rainbow-me/rainbowkit'
 import { WagmiProvider } from 'wagmi'
-import { mainnet, polygon, optimism, arbitrum, base, zora, bscTestnet } from 'viem/chains'
+import { /* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ bscTestnet } from 'viem/chains'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 if (!process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID) {
@@ -17,7 +17,7 @@ if (!process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID) {
 const config = getDefaultConfig({
   appName: 'MintroAI DApp',
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID,
-  chains: [mainnet, polygon, optimism, arbitrum, base, zora, bscTestnet],
+  chains: [/* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ bscTestnet],
   ssr: true,
   appIcon: '/assets/logo-small.png',
 })
