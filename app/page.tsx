@@ -56,7 +56,10 @@ export default function DappPage() {
                       <SelectItem value="token" className="text-white focus:text-white focus:bg-white/10">
                         Token Creation
                       </SelectItem>
-                      <SelectItem value="nft" className="text-white focus:text-white focus:bg-white/10">
+                      <SelectItem value="general" className="text-white focus:text-white focus:bg-white/10">
+                        General Purpose
+                      </SelectItem>
+                      {/* <SelectItem value="nft" className="text-white focus:text-white focus:bg-white/10">
                         NFT Creation
                       </SelectItem>
                       <SelectItem value="dao" className="text-white focus:text-white focus:bg-white/10">
@@ -64,7 +67,7 @@ export default function DappPage() {
                       </SelectItem>
                       <SelectItem value="defi" className="text-white focus:text-white focus:bg-white/10">
                         DeFi Protocol
-                      </SelectItem>
+                      </SelectItem> */}
                     </SelectContent>
                   </Select>
                   <div className="flex items-center space-x-2">
