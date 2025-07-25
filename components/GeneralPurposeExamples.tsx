@@ -54,10 +54,13 @@ const EXAMPLES = [
 export function GeneralPurposeExamples({ onExampleClick }: { onExampleClick?: (text: string) => void }) {
   return (
     <div
-      className="flex flex-col gap-4 p-4 min-h-[350px] md:min-h-[420px] max-h-[70vh] overflow-y-auto bg-black/30 rounded-lg"
+      className="flex flex-col gap-4 p-4 h-[90vh] lg:h-[80vh] overflow-y-auto bg-black/30 rounded-lg"
     >
-      <h2 className="text-lg font-semibold text-white/90 mb-2">Example Questions</h2>
-      <ul className="space-y-3">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-lg">💡</span>
+        <h2 className="text-lg font-semibold text-white/90">Example Questions</h2>
+      </div>
+      <ul className="space-y-3 flex-1 overflow-y-auto">
         {EXAMPLES.map((ex, i) => (
           <li
             key={i}
@@ -72,6 +75,13 @@ export function GeneralPurposeExamples({ onExampleClick }: { onExampleClick?: (t
           </li>
         ))}
       </ul>
+      <div className="mt-2 pt-3 border-t border-white/10">
+        <div className="text-center">
+          <p className="text-white/50 text-xs">
+            Powered by ChainGPT • Real-time crypto data & analysis
+          </p>
+        </div>
+      </div>
     </div>
   )
 } 
