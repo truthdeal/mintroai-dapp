@@ -6,12 +6,11 @@ if (!process.env.NEXT_PUBLIC_CHAT_URL) {
 
 const CHAT_URL = process.env.NEXT_PUBLIC_CHAT_URL
 const CHAT_URL_GENERAL = process.env.NEXT_PUBLIC_CHAT_URL_GENERAL
-const CHAT_URL_API_KEY = process.env.NEXT_PUBLIC_CHAT_URL_GENERAL_API_KEY
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
-export const maxDuration = 30 // saniye cinsinden maksimum süre
+export const maxDuration = 40 // saniye cinsinden maksimum süre
 
 export async function POST(req: NextRequest) {
     try {
@@ -24,16 +23,15 @@ export async function POST(req: NextRequest) {
 
     let fetchPromise: Promise<Response>
     if (mode === 'general') {
-      fetchPromise = fetch(`${CHAT_URL_GENERAL}/chat/stream`, {
-        method: 'POST',
+      fetchPromise = fetch(`${CHAT_URL_GENERAL}`, {
+      method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CHAT_URL_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "general_assistant",
-          question: chatInput,
-          chatHistory: "off"
+          sessionId,
+          chatInput,
+          mode
         }),
       })
     } else if (mode === 'token') {
@@ -67,15 +65,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // console data and mode
-    console.log('Data:', data)
-    console.log('Mode:', mode)
-
     return NextResponse.json(data)
   } catch (error) {
     console.error('Chat error:', error)
     
-    // Özel hata mesajları
+
     if (error instanceof Error && error.message === 'Request timeout') {
       return NextResponse.json(
         { error: 'The request took too long to process. Please try again.' },
