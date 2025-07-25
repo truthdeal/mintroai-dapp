@@ -2,52 +2,104 @@ import React from "react"
 
 const EXAMPLES = [
   {
-    title: "Trending Latest",
-    description: "Show me the trending latest cryptocurrencies in the market."
+    title: "Trending Latest Cryptocurrencies",
+    description: "Show me the trending latest cryptocurrencies in the market with their prices and 24hr changes."
   },
   {
-    title: "Top Gainers & Losers",
+    title: "Top Gainers & Losers Today",
     description: "Provide a list of today's top gainers and losers in the crypto market."
   },
   {
-    title: "Coin Price, Supply & General Info",
-    description: "Please provide full analysis report of coin BTC/ETH/BNB..."
+    title: "Token Security Analysis",
+    description: "Check token security of 0x45A01E4e04F14f7A4a6702c74187c5F6222033cd for honeypot detection and malicious code."
   },
   {
-    title: "Exchanges Information",
-    description: "Provide details of the exchange Binance."
+    title: "Smart Contract Source Code",
+    description: "Get source code for 0xe9e7cea3dedca5984780bafc599bd69add087d56 and analyze its functions."
   },
   {
-    title: "Crypto Fear and Greed Index",
+    title: "Contract Creator & Deployment",
+    description: "Who deployed 0x25931894a86D47441213199621F1F2994e1c39Aa and when was it created?"
+  },
+  {
+    title: "Address Security Check",
+    description: "Is 0x6b07E75465654612731139D6F4D5DcEf117E3d55 blacklisted or involved in any scam activities?"
+  },
+  {
+    title: "Gas Prices for Deployment",
+    description: "What are the current gas prices on Ethereum for fast contract deployment?"
+  },
+  {
+    title: "DeFi Total Value Locked",
+    description: "Get current DeFi TVL across all protocols and analyze the trend."
+  },
+  {
+    title: "Token Holder Analysis",
+    description: "Provide the most profitable traders of token 0x25931894a86D47441213199621F1F2994e1c39Aa on Ethereum."
+  },
+  {
+    title: "Crypto Fear & Greed Index",
     description: "What is the current value of fear and greed index in the crypto market?"
   },
   {
-    title: "Latest News",
-    description: "Get the latest 5 crypto news and events."
+    title: "Latest Crypto News",
+    description: "Get the latest 5 crypto news and events affecting the market."
   },
   {
-    title: "Token Security (Smart Contract)",
-    description: "Check token security of 0x45A01E4e04F14f7A4a6702c74187c5F6222033cd"
+    title: "Bitcoin Market Analysis",
+    description: "Please provide full analysis report of Bitcoin including price, supply, and market cap."
   },
   {
-    title: "Address Security (Smart Contract)",
-    description: "Is 0x6b07E75465654612731139D6F4D5DcEf117E3d55 blacklisted?"
+    title: "Ethereum Network Stats",
+    description: "Provide complete analysis of ETH including current price, gas fees, and network activity."
   },
   {
-    title: "Source Code of Contract",
-    description: "Get source code for 0xe9e7cea3..."
+    title: "Exchange Information",
+    description: "Provide details of Binance exchange including trading pairs, volume, and trust score."
   },
   {
-    title: "Creator of Contract",
-    description: "Who deployed 0xe9e7cea3... ?"
+    title: "Wallet Balance Check",
+    description: "Check ETH balance and token holdings of 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 on Ethereum."
   },
   {
-    title: "BNB/ETH Balance of an Address",
-    description: "Check ETH balance of 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 on Ethereum."
+    title: "Cross-Chain Bridge Analysis",
+    description: "List the top cross-chain bridges by volume and their supported networks."
   },
   {
-    title: "BEP20/ERC20 Token Transfers of an Address",
-    description: "Which BEP-20 tokens does 0xd9b4753c... hold?"
+    title: "NFT Collection Stats",
+    description: "Fetch NFT collection stats for 0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d including floor price and volume."
+  },
+  {
+    title: "Stablecoin Market Data",
+    description: "Provide stablecoin market cap distribution across different blockchains."
+  },
+  {
+    title: "DEX Volume Comparison",
+    description: "Compare the 24-hour trading volumes between Uniswap and PancakeSwap."
+  },
+  {
+    title: "Yield Farming Opportunities",
+    description: "Fetch all yield values for Compound protocol with APY predictions."
+  },
+  {
+    title: "Token Price Predictions",
+    description: "Provide hourly price predictions for BTC and ETH for the next 24 hours."
+  },
+  {
+    title: "Phishing Site Detection",
+    description: "Analyze https://wallet-connect.xyz and determine if it's a phishing site."
+  },
+  {
+    title: "Wallet Transaction History",
+    description: "Provide recent transaction history of wallet 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045 on Polygon."
+  },
+  {
+    title: "Protocol Revenue Analysis",
+    description: "Fetch revenue data for Uniswap-v2 and analyze its weekly growth trends."
+  },
+  {
+    title: "Social Sentiment Analysis",
+    description: "What are the top mentioned cryptocurrencies on social media by KOLs right now?"
   }
 ]
 
