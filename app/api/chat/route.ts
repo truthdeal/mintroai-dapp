@@ -7,7 +7,7 @@ if (!process.env.NEXT_PUBLIC_CHAT_URL) {
 const CHAT_URL = process.env.NEXT_PUBLIC_CHAT_URL
 const CHAT_URL_GENERAL = process.env.NEXT_PUBLIC_CHAT_URL_GENERAL
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export const maxDuration = 80 // Maximum duration as seconds
