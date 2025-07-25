@@ -92,6 +92,7 @@ export function AIChat({ creationType, inputValue, setInputValue }: AIChatProps)
             body: JSON.stringify({
               sessionId,
               chatInput: message,
+              mode: creationType,
             }),
           })
 
