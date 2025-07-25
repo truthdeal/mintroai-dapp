@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Image from 'next/image'
 import { Card } from "@/components/ui/card"
 import { TokenCreationForm } from "@/components/token-creation-form"
@@ -10,13 +10,24 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { CustomConnectButton } from "@/components/custom-connect-button"
+import { GeneralPurposeExamples } from "@/components/GeneralPurposeExamples"
 
 export default function DappPage() {
   const [useAI, setUseAI] = useState(true)
   const [creationType, setCreationType] = useState("token")
 
+  // Mapping for actions based on creationType
+  useEffect(() => {
+    if (creationType === "general") {
+      // Burada API isteği veya başka bir aksiyon tetiklenebilir
+      // Örnek:
+      console.log("General Purpose seçildi, burada API isteği yapılabilir.")
+      // fetch('/api/general-purpose', { method: 'POST', body: JSON.stringify({ ... }) })
+    }
+  }, [creationType])
+
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
+    <div className="relative min-h-screen h-full bg-gradient-to-b from-black via-gray-900 to-black flex flex-col">
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/20 via-transparent to-transparent blur-3xl opacity-30 animate-pulse" />
@@ -41,11 +52,11 @@ export default function DappPage() {
       </header>
 
       {/* Main Content */}
-      <main className="relative pt-24 pb-16 container mx-auto px-4">
-        <div className="flex flex-col lg:flex-row gap-6">
+      <main className="relative pt-24 pb-2 container mx-auto px-4 flex-1 h-full flex flex-col">
+        <div className="flex flex-col lg:flex-row gap-6 h-full flex-1 items-stretch">
           {/* Left Column - AI Chat */}
-          <div className="w-full lg:w-1/2">
-            <Card className="bg-black/50 backdrop-blur-xl border-white/10 shadow-xl shadow-primary/10">
+          <div className="w-full lg:w-1/2 flex flex-col h-full flex-1">
+            <Card className="bg-black/50 backdrop-blur-xl border-white/10 shadow-xl shadow-primary/10 flex-1 h-full flex flex-col !mb-0 !pb-0">
               <div className="p-4 border-b border-white/10">
                 <div className="flex items-center justify-between">
                   <Select value={creationType} onValueChange={(value) => setCreationType(value)}>
@@ -87,10 +98,14 @@ export default function DappPage() {
             </Card>
           </div>
 
-          {/* Right Column - Form */}
-          <div className="w-full lg:w-1/2">
-            <Card className="bg-black/50 backdrop-blur-xl border-white/10 shadow-xl shadow-primary/10">
-              <TokenCreationForm />
+          {/* Right Column - Form or Placeholder */}
+          <div className="w-full lg:w-1/2 flex flex-col h-full flex-1">
+            <Card className="bg-black/50 backdrop-blur-xl border-white/10 shadow-xl shadow-primary/10 flex-1 h-full flex flex-col !mb-0 !pb-0">
+              {creationType === "token" ? (
+                <TokenCreationForm />
+              ) : creationType === "general" ? (
+                <GeneralPurposeExamples />
+              ) : null}
             </Card>
           </div>
         </div>
