@@ -10,21 +10,24 @@ const CHAT_URL_GENERAL = process.env.NEXT_PUBLIC_CHAT_URL_GENERAL
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
-export const maxDuration = 40 // saniye cinsinden maksimum süre
+export const maxDuration = 80 // Maximum duration as seconds
 
 export async function POST(req: NextRequest) {
     try {
     const { sessionId, chatInput, mode } = await req.json()
 
+    // Mode'a göre timeout süresini belirle
+    const timeoutDuration = mode === 'general' ? 75000 : 25000 // 75 saniye vs 25 saniye
+
     // Timeout kontrolü için Promise.race kullanımı
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 25000) // 25 saniye
+      setTimeout(() => reject(new Error('Request timeout')), timeoutDuration)
     })
 
     let fetchPromise: Promise<Response>
     if (mode === 'general') {
       fetchPromise = fetch(`${CHAT_URL_GENERAL}`, {
-      method: 'POST',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
