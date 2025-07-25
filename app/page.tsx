@@ -15,14 +15,12 @@ import { GeneralPurposeExamples } from "@/components/GeneralPurposeExamples"
 export default function DappPage() {
   const [useAI, setUseAI] = useState(true)
   const [creationType, setCreationType] = useState("token")
+  const [chatInput, setChatInput] = useState("")
 
   // Mapping for actions based on creationType
   useEffect(() => {
     if (creationType === "general") {
-      // Burada API isteği veya başka bir aksiyon tetiklenebilir
-      // Örnek:
-      console.log("General Purpose seçildi, burada API isteği yapılabilir.")
-      // fetch('/api/general-purpose', { method: 'POST', body: JSON.stringify({ ... }) })
+      console.log("General Purpose selected")
     }
   }, [creationType])
 
@@ -94,7 +92,7 @@ export default function DappPage() {
                   </div>
                 </div>
               </div>
-              <AIChat creationType={creationType} />
+              <AIChat creationType={creationType} inputValue={chatInput} setInputValue={setChatInput} />
             </Card>
           </div>
 
@@ -104,7 +102,7 @@ export default function DappPage() {
               {creationType === "token" ? (
                 <TokenCreationForm />
               ) : creationType === "general" ? (
-                <GeneralPurposeExamples />
+                <GeneralPurposeExamples onExampleClick={setChatInput} />
               ) : null}
             </Card>
           </div>

@@ -51,7 +51,7 @@ const EXAMPLES = [
   }
 ]
 
-export function GeneralPurposeExamples() {
+export function GeneralPurposeExamples({ onExampleClick }: { onExampleClick?: (text: string) => void }) {
   return (
     <div
       className="flex flex-col gap-4 p-4 min-h-[350px] md:min-h-[420px] max-h-[70vh] overflow-y-auto bg-black/30 rounded-lg"
@@ -59,7 +59,14 @@ export function GeneralPurposeExamples() {
       <h2 className="text-lg font-semibold text-white/90 mb-2">Example Questions</h2>
       <ul className="space-y-3">
         {EXAMPLES.map((ex, i) => (
-          <li key={i} className="bg-white/5 rounded-lg p-3 border border-white/10">
+          <li
+            key={i}
+            className="bg-white/5 rounded-lg p-3 border border-white/10 cursor-pointer hover:bg-primary/10 transition-colors"
+            tabIndex={0}
+            onClick={() => onExampleClick?.(ex.description)}
+            onKeyDown={e => { if (e.key === 'Enter') onExampleClick?.(ex.description) }}
+            aria-label={ex.description}
+          >
             <div className="font-medium text-primary mb-1">{ex.title}</div>
             <div className="text-white/80 text-sm">{ex.description}</div>
           </li>
