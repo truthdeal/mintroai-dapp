@@ -1,7 +1,30 @@
 {
-  "name": "saas-dapp",
+  "name": "mintro-ai-dapp",
   "version": "0.1.0",
+  "description": "AI-Powered Smart Contract Creation Platform - Create, deploy, and manage smart contracts with AI assistance",
   "private": true,
+  "author": "MintroAI Team",
+  "license": "MIT",
+  "homepage": "https://mintro.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/truthdeal/mintroai-dapp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/truthdeal/mintroai-dapp/issues"
+  },
+  "keywords": [
+    "blockchain",
+    "smart-contracts",
+    "ai",
+    "web3",
+    "ethereum",
+    "defi",
+    "tokens",
+    "dapp",
+    "nextjs",
+    "typescript"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
