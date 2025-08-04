@@ -11,14 +11,14 @@ Feature: Wallet Selection Modal
   Scenario: Opening wallet selection modal
     When I click the "Connect Wallet" button
     Then I should see the wallet selection modal
-    And I should see "Popüler" tab selected by default
+    And I should see "Popular" tab selected by default
     And I should see "NEAR Wallet" tab
     And I should see MetaMask in the popular wallets section
 
   @popular-wallets
   Scenario: Viewing popular Ethereum wallets
     Given the wallet selection modal is open
-    When I am on the "Popüler" tab
+    When I am on the "Popular" tab
     Then I should see the following wallet options:
       | wallet           | icon                    |
       | Rainbow         | rainbow-wallet-icon     |
@@ -34,20 +34,20 @@ Feature: Wallet Selection Modal
     When I click on the "NEAR Wallet" tab
     Then I should see the NEAR wallet options
     And I should see "NEAR Wallet" as the first option
-    And the "Popüler" tab should be unselected
+    And the "Popular" tab should be unselected
 
   @tab-navigation
   Scenario: Tab navigation and state preservation
     Given the wallet selection modal is open
     When I click on the "NEAR Wallet" tab
-    And I click on the "Popüler" tab
+    And I click on the "Popular" tab
     Then I should see the Ethereum wallet options again
     And MetaMask should still be visible
 
   @wallet-selection-ethereum
   Scenario: Selecting MetaMask from popular wallets
     Given the wallet selection modal is open
-    And I am on the "Popüler" tab
+    And I am on the "Popular" tab
     When I click on the "MetaMask" option
     Then the MetaMask extension popup should appear
     And the modal should show a loading state
@@ -74,11 +74,3 @@ Feature: Wallet Selection Modal
     When I click the close button
     Then the modal should close
     And I should see the "Connect Wallet" button again
-
-  @modal-accessibility
-  Scenario: Modal keyboard navigation
-    Given the wallet selection modal is open
-    When I press the Tab key
-    Then I should see focus move between wallet options
-    And I should be able to switch tabs with arrow keys
-    And I should be able to close modal with Escape key

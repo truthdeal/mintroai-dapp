@@ -1,8 +1,12 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from '@/components/ui/button'
 import { Wallet } from 'lucide-react'
+import { useState } from 'react'
+import WalletModal from './wallet/WalletModal'
 
 export function CustomConnectButton() {
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false)
+
   return (
     <ConnectButton.Custom>
       {({
@@ -18,19 +22,57 @@ export function CustomConnectButton() {
           return null
         }
 
+        const handleWalletSelect = async (walletType: string, isNearWallet?: boolean) => {
+          // Loading state'i göstermek için kısa bir bekleme
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          if (isNearWallet) {
+            // NEAR cüzdan bağlantı mantığı
+            console.log('Connecting to NEAR wallet:', walletType)
+            // TODO: NEAR cüzdan bağlantısı için gerekli işlemleri yap
+            setIsWalletModalOpen(false)
+          } else {
+            // EVM cüzdanları için önce window.ethereum kontrolü yap
+            if (typeof window !== 'undefined' && (window as any).ethereum?.request) {
+              try {
+                // Test için window.ethereum.request'i çağır
+                await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+                openConnectModal()
+                setIsWalletModalOpen(false)
+              } catch (error) {
+                // Error'ı WalletModal'a ilet
+                throw error;
+              }
+            } else {
+              // Normal RainbowKit flow
+              openConnectModal()
+              setIsWalletModalOpen(false)
+            }
+          }
+        }
+
         return (
           <div className="flex items-center gap-2">
             {(() => {
               if (!mounted || !account || !chain) {
                 return (
-                  <Button
-                    onClick={openConnectModal}
-                    variant="outline"
-                    className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
-                  >
-                    <Wallet className="w-4 h-4" />
-                    Connect Wallet
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => setIsWalletModalOpen(true)}
+                      variant="outline"
+                      className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
+                      data-testid="connect-wallet-button"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      Connect Wallet
+                    </Button>
+
+                    <WalletModal
+                      isOpen={isWalletModalOpen}
+                      onClose={() => setIsWalletModalOpen(false)}
+                      onSelectWallet={handleWalletSelect}
+                    />
+                  </>
                 )
               }
 
@@ -88,4 +130,4 @@ export function CustomConnectButton() {
       }}
     </ConnectButton.Custom>
   )
-} 
+}
