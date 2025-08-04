@@ -23,9 +23,11 @@ interface Message {
 
 interface AIChatProps {
   creationType: string
+  inputValue: string
+  setInputValue: (val: string) => void
 }
 
-export function AIChat({ creationType }: AIChatProps) {
+export function AIChat({ creationType, inputValue, setInputValue }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -33,7 +35,7 @@ export function AIChat({ creationType }: AIChatProps) {
       content: `Hello! I'm your AI assistant for ${creationType} creation. How can I help you today?`,
     },
   ])
-  const [input, setInput] = useState("")
+  // const [input, setInput] = useState("") // Remove internal state
   const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -73,7 +75,7 @@ export function AIChat({ creationType }: AIChatProps) {
         role: 'user', 
         content: message 
       }])
-      setInput('')
+      setInputValue("")
       setIsTyping(true)
 
       const maxRetries = 3
@@ -90,6 +92,7 @@ export function AIChat({ creationType }: AIChatProps) {
             body: JSON.stringify({
               sessionId,
               chatInput: message,
+              mode: creationType,
             }),
           })
 
@@ -134,8 +137,8 @@ export function AIChat({ creationType }: AIChatProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim()) return
-    sendMessage(input)
+    if (!inputValue.trim()) return
+    sendMessage(inputValue)
   }
 
   return (
@@ -192,8 +195,8 @@ export function AIChat({ creationType }: AIChatProps) {
       <div className="p-4 border-t border-white/10">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
             placeholder="Type your message..."
             className="flex-1 bg-white/5 border-white/10 text-white/90 placeholder:text-white/50"
           />
