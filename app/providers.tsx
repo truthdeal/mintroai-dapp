@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { NearWalletProvider } from '@/contexts/near-wallet'
+import { WalletProvider } from '@/contexts/wallet-context'
 import {
   RainbowKitProvider,
   getDefaultConfig,
@@ -30,14 +31,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   React.useEffect(() => setMounted(true), [])
 
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={darkTheme()} modalSize="compact">
-          <NearWalletProvider>
-            {mounted && children}
-          </NearWalletProvider>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <WalletProvider>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider theme={darkTheme()} modalSize="compact">
+            <NearWalletProvider>
+              {mounted && children}
+            </NearWalletProvider>
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </WalletProvider>
   )
 } 

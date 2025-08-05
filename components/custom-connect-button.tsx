@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Wallet, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { useNearWallet } from '@/contexts/near-wallet'
+import { useWallet } from '@/hooks/useWallet'
 import Image from 'next/image'
 import {
   DropdownMenu,
@@ -10,12 +11,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-interface EthereumWindow extends Window {
-  ethereum?: {
-    request: (args: { method: string }) => Promise<string[]>;
-  };
-}
 
 const WALLET_OPTIONS = [
   {
@@ -35,6 +30,14 @@ const WALLET_OPTIONS = [
 export function CustomConnectButton() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const { disconnect: disconnectNear, accountId: nearAccountId, isConnected: isNearConnected } = useNearWallet()
+  const { 
+    isConnected: isWalletConnected, 
+    address: walletAddress, 
+    connect: connectWallet, 
+    disconnect: disconnectWallet,
+    chainId,
+    network 
+  } = useWallet()
 
   return (
     <ConnectButton.Custom>
@@ -57,8 +60,8 @@ export function CustomConnectButton() {
           
           if (isNearWallet) {
             try {
-              if (typeof window !== 'undefined' && window.modal) {
-                await window.modal.show()
+              if (typeof window !== 'undefined' && (window as any).modal) {
+                await (window as any).modal.show()
                 setIsDropdownOpen(false)
               } else {
                 throw new Error('NEAR wallet selector modal is not initialized')
@@ -68,20 +71,13 @@ export function CustomConnectButton() {
               throw error
             }
           } else {
-            // EVM cüzdanları için önce window.ethereum kontrolü yap
-            const ethWindow = window as EthereumWindow;
-            if (typeof window !== 'undefined' && ethWindow.ethereum?.request) {
-              try {
-                // Test için window.ethereum.request'i çağır
-                await ethWindow.ethereum.request({ method: 'eth_requestAccounts' });
-                openConnectModal()
-                setIsDropdownOpen(false)
-              } catch (error) {
-                // Error'ı dropdown'a ilet
-                throw error;
-              }
-            } else {
-              // Normal RainbowKit flow
+            try {
+              // Use our new wallet state management system
+              await connectWallet('evm');
+              setIsDropdownOpen(false)
+            } catch (error) {
+              console.error('Failed to connect EVM wallet:', error)
+              // Fallback to RainbowKit if our system fails
               openConnectModal()
               setIsDropdownOpen(false)
             }
@@ -91,7 +87,10 @@ export function CustomConnectButton() {
         return (
           <div className="flex items-center gap-2">
             {(() => {
-              if ((!mounted || !account || !chain) && !isNearConnected) {
+              // Check if any wallet is connected (EVM or NEAR)
+              const isAnyWalletConnected = isWalletConnected || isNearConnected || (mounted && account && chain);
+              
+              if (!isAnyWalletConnected) {
                 return (
                   <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                     <DropdownMenuTrigger asChild>
@@ -145,6 +144,22 @@ export function CustomConnectButton() {
                   >
                     <Wallet className="w-4 h-4" />
                     Wrong Network
+                  </Button>
+                )
+              }
+
+              // Show EVM wallet if connected via our new system
+              if (isWalletConnected && walletAddress) {
+                return (
+                  <Button
+                    onClick={disconnectWallet}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
+                  >
+                    <Wallet className="w-4 h-4" />
+                    {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                    {network && ` (${network.name})`}
                   </Button>
                 )
               }

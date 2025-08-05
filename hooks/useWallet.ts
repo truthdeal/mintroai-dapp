@@ -1,48 +1,79 @@
-import { useEffect } from 'react'
-import { useAccount, useConfig, useBalance, useConnect } from 'wagmi'
-
-export type WalletType = 'metamask' | 'coinbase' | 'walletconnect' | 'rainbow';
+import { useWalletContext } from '@/contexts/wallet-context';
+import { WalletType } from '@/types/wallet';
 
 export function useWallet() {
-  const account = useAccount()
-  const config = useConfig()
-  const { connectAsync, connectors } = useConnect()
-  const { data: balance } = useBalance({
-    address: account.address,
-  })
-
-  const connect = async (walletType: WalletType) => {
-    const connector = connectors.find(c => c.id === walletType)
-    if (!connector) {
-      throw new Error(`Connector not found for wallet type: ${walletType}`)
-    }
-    return connectAsync({ connector })
-  }
-
-  useEffect(() => {
-    // Account change handler
-    if (account.status === 'connected') {
-      console.log('Wallet connected:', account.address)
-    } else if (account.status === 'disconnected') {
-      console.log('Wallet disconnected')
-    }
-  }, [account.status, account.address])
-
-  useEffect(() => {
-    // Network change handler
-    const chain = config.chains.find(c => c.id === config.state.chainId)
-    if (chain) {
-      console.log('Network changed:', chain.name)
-    }
-  }, [config.state.chainId, config.chains])
-
+  const context = useWalletContext();
+  
   return {
-    address: account.address,
-    isConnecting: account.status === 'connecting',
-    isDisconnected: account.status === 'disconnected',
-    chain: config.chains.find(c => c.id === config.state.chainId),
-    balance,
-    isConnected: account.status === 'connected',
+    // State
+    isConnected: context.isConnected,
+    isConnecting: context.isConnecting,
+    address: context.address,
+    chainId: context.chainId,
+    network: context.network,
+    balance: context.balance,
+    error: context.error,
+    walletType: context.walletType,
+    isInitialized: context.isInitialized,
+    
+    // Actions
+    connect: context.connect,
+    disconnect: context.disconnect,
+    switchNetwork: context.switchNetwork,
+    refreshBalance: context.refreshBalance,
+    clearError: context.clearError,
+    
+    // Utilities
+    isWalletSupported: context.isWalletSupported,
+    getNetworkByChainId: context.getNetworkByChainId,
+  };
+}
+
+// Specialized hooks for specific functionality
+export function useWalletConnection() {
+  const { isConnected, isConnecting, connect, disconnect, error, clearError } = useWallet();
+  
+  return {
+    isConnected,
+    isConnecting,
     connect,
-  }
-} 
+    disconnect,
+    error,
+    clearError,
+  };
+}
+
+export function useWalletNetwork() {
+  const { chainId, network, switchNetwork, getNetworkByChainId } = useWallet();
+  
+  return {
+    chainId,
+    network,
+    switchNetwork,
+    getNetworkByChainId,
+    isNetworkSupported: network?.isSupported ?? false,
+  };
+}
+
+export function useWalletBalance() {
+  const { balance, refreshBalance } = useWallet();
+  
+  return {
+    balance,
+    refreshBalance,
+    hasBalance: balance && parseFloat(balance.value) > 0,
+  };
+}
+
+export function useWalletEvents() {
+  const { error, clearError } = useWallet();
+  
+  return {
+    error,
+    clearError,
+    hasError: !!error,
+  };
+}
+
+// Legacy compatibility - keeping the old WalletType export for backwards compatibility
+export type { WalletType };
