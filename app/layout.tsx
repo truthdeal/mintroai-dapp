@@ -1,4 +1,5 @@
 import '@rainbow-me/rainbowkit/styles.css'
+import '@near-wallet-selector/modal-ui/styles.css'
 import "./globals.css"
 import { Inter } from "next/font/google"
 import { Providers } from "./providers"

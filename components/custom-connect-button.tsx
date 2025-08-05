@@ -1,8 +1,15 @@
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Button } from '@/components/ui/button'
-import { Wallet } from 'lucide-react'
+import { Wallet, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
-import WalletModal from './wallet/WalletModal'
+import { useNearWallet } from '@/contexts/near-wallet'
+import Image from 'next/image'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface EthereumWindow extends Window {
   ethereum?: {
@@ -10,8 +17,24 @@ interface EthereumWindow extends Window {
   };
 }
 
+const WALLET_OPTIONS = [
+  {
+    id: 'popular',
+    name: 'Popular',
+    icon: '/assets/wallets/metamask.svg',
+    isNearWallet: false
+  },
+  {
+    id: 'near',
+    name: 'NEAR Wallet',
+    icon: '/assets/wallets/near.svg',
+    isNearWallet: true
+  }
+]
+
 export function CustomConnectButton() {
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const { disconnect: disconnectNear, accountId: nearAccountId, isConnected: isNearConnected } = useNearWallet()
 
   return (
     <ConnectButton.Custom>
@@ -33,10 +56,17 @@ export function CustomConnectButton() {
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           if (isNearWallet) {
-            // NEAR cüzdan bağlantı mantığı
-            console.log('Connecting to NEAR wallet:', walletType)
-            // TODO: NEAR cüzdan bağlantısı için gerekli işlemleri yap
-            setIsWalletModalOpen(false)
+            try {
+              if (typeof window !== 'undefined' && window.modal) {
+                await window.modal.show()
+                setIsDropdownOpen(false)
+              } else {
+                throw new Error('NEAR wallet selector modal is not initialized')
+              }
+            } catch (error) {
+              console.error('Failed to connect NEAR wallet:', error)
+              throw error
+            }
           } else {
             // EVM cüzdanları için önce window.ethereum kontrolü yap
             const ethWindow = window as EthereumWindow;
@@ -45,15 +75,15 @@ export function CustomConnectButton() {
                 // Test için window.ethereum.request'i çağır
                 await ethWindow.ethereum.request({ method: 'eth_requestAccounts' });
                 openConnectModal()
-                setIsWalletModalOpen(false)
+                setIsDropdownOpen(false)
               } catch (error) {
-                // Error'ı WalletModal'a ilet
+                // Error'ı dropdown'a ilet
                 throw error;
               }
             } else {
               // Normal RainbowKit flow
               openConnectModal()
-              setIsWalletModalOpen(false)
+              setIsDropdownOpen(false)
             }
           }
         }
@@ -61,29 +91,52 @@ export function CustomConnectButton() {
         return (
           <div className="flex items-center gap-2">
             {(() => {
-              if (!mounted || !account || !chain) {
+              if ((!mounted || !account || !chain) && !isNearConnected) {
                 return (
-                  <>
-                    <Button
-                      onClick={() => setIsWalletModalOpen(true)}
-                      variant="outline"
-                      className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
-                      data-testid="connect-wallet-button"
+                  <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-[180px] justify-between border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
+                        data-testid="connect-wallet-button"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Wallet className="w-4 h-4" />
+                          <span>Connect Wallet</span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent 
+                      align="end" 
+                      className="min-w-[180px] p-2"
+                      sideOffset={8}
                     >
-                      <Wallet className="w-4 h-4" />
-                      Connect Wallet
-                    </Button>
-
-                    <WalletModal
-                      isOpen={isWalletModalOpen}
-                      onClose={() => setIsWalletModalOpen(false)}
-                      onSelectWallet={handleWalletSelect}
-                    />
-                  </>
+                      {WALLET_OPTIONS.map((option) => (
+                        <DropdownMenuItem
+                          key={option.id}
+                          onClick={() => handleWalletSelect(option.id, option.isNearWallet)}
+                          className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-primary/5 rounded-md transition-colors duration-200"
+                          data-testid={`wallet-option-${option.id}`}
+                        >
+                          <div className="flex items-center justify-center w-6 h-6">
+                            <Image
+                              src={option.icon}
+                              alt={option.name}
+                              width={24}
+                              height={24}
+                              className="rounded-full"
+                            />
+                          </div>
+                          <span className="font-medium text-sm">{option.name}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )
               }
 
-              if (chain.unsupported) {
+              if (chain?.unsupported) {
                 return (
                   <Button
                     onClick={openChainModal}
@@ -96,6 +149,26 @@ export function CustomConnectButton() {
                 )
               }
 
+              if (isNearConnected) {
+                return (
+                  <Button
+                    onClick={disconnectNear}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
+                  >
+                    <Image
+                      src="/assets/wallets/near.svg"
+                      alt="NEAR"
+                      width={16}
+                      height={16}
+                      className="rounded-full"
+                    />
+                    {nearAccountId}
+                  </Button>
+                )
+              }
+
               return (
                 <>
                   <Button
@@ -104,19 +177,19 @@ export function CustomConnectButton() {
                     size="sm"
                     className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
                   >
-                    {chain.hasIcon && (
+                    {chain?.hasIcon && (
                       <div className="w-4 h-4 overflow-hidden rounded-full">
-                        {chain.iconUrl && (
+                        {chain?.iconUrl && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            alt={chain.name ?? 'Chain icon'}
-                            src={chain.iconUrl}
+                            alt={chain?.name ?? 'Chain icon'}
+                            src={chain?.iconUrl}
                             className="w-full h-full"
                           />
                         )}
                       </div>
                     )}
-                    {chain.name}
+                    {chain?.name}
                   </Button>
 
                   <Button
@@ -126,8 +199,8 @@ export function CustomConnectButton() {
                     className="gap-2 border-primary/50 hover:bg-primary/10 hover:border-primary transition-all duration-300"
                   >
                     <Wallet className="w-4 h-4" />
-                    {account.displayBalance ? `${account.displayBalance}  ` : ''} 
-                    {account.displayName}
+                    {account?.displayBalance ? `${account?.displayBalance}  ` : ''} 
+                    {account?.displayName}
                   </Button>
                 </>
               )

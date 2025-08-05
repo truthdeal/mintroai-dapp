@@ -1,54 +1,14 @@
 # language: en
-Feature: Wallet Selection Modal
+Feature: Wallet Selection Dropdown
   As a user
-  I want to see different wallet options categorized by blockchain
+  I want to see different wallet options in a dropdown menu
   So that I can connect my preferred wallet easily
 
   Background:
     Given I am on the homepage
 
-  @modal-display
-  Scenario: Opening wallet selection modal
+  @basic-display
+  Scenario: Opening wallet selection dropdown
     When I click the "Connect Wallet" button
-    Then I should see the wallet selection modal
-    And I should see "Popular" tab selected by default
-
-    And I should see MetaMask in the popular wallets section
-
-  @popular-wallets
-  Scenario: Viewing popular Ethereum wallets
-    Given the wallet selection modal is open
-    When I am on the "Popular" tab
-    Then I should see the following wallet options:
-      | wallet           | icon                    |
-      | Rainbow         | rainbow-wallet-icon     |
-      | Coinbase Wallet | coinbase-wallet-icon    |
-      | MetaMask        | metamask-icon           |
-      | WalletConnect   | walletconnect-icon      |
-    And MetaMask should be prominently displayed
-    And each wallet should have its icon and name
-
-  @wallet-selection-ethereum
-  Scenario: Selecting MetaMask from popular wallets
-    Given the wallet selection modal is open
-    And I am on the "Popular" tab
-    When I click on the "MetaMask" option
-    Then the MetaMask extension popup should appear
-    And the modal should show a loading state
-
-
-
-  @modal-responsive
-  Scenario: Modal responsiveness on mobile
-    Given I am using a mobile device
-    When I click the "Connect Wallet" button
-    Then I should see the wallet selection modal in full screen
-    And I should see the tabs at the top
-    And all wallet options should be properly aligned
-
-  @close-modal
-  Scenario: Closing the modal
-    Given the wallet selection modal is open
-    When I click the close button
-    Then the modal should close
-    And I should see the "Connect Wallet" button again
+    Then I should see the wallet selection dropdown
+    And I should see both EVM and NEAR wallet options
