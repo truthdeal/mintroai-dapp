@@ -16,9 +16,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const vestingFormSchema = z.object({
   projectName: z.string().min(1, "Project name is required"),
   tokenContractAddress: z.string().min(42, "Valid contract address is required").max(42, "Invalid contract address"),
-  vestingTGE: z.string().min(1, "TGE date is required"),
+  vestingTGE: z.string().min(1, "TGE date and time (UTC) is required").refine((val) => {
+    const date = new Date(val);
+    return date > new Date();
+  }, "TGE date must be in the future (UTC)"),
   tgeReleasePercentage: z.number().min(0).max(100),
-  cliffMonths: z.number().min(0).max(120),
+  cliffMonths: z.number().min(0).max(60),
   vestingType: z.enum(["daily", "monthly"]),
   releaseMonthsCount: z.number().min(1).max(120),
   totalVestingAmount: z.string().min(1, "Total vesting amount is required"),
@@ -32,6 +35,17 @@ const vestingFormSchema = z.object({
 export type VestingFormValues = z.infer<typeof vestingFormSchema>
 
 export function VestingCreationForm() {
+  const [currentUTCTime, setCurrentUTCTime] = React.useState("")
+
+  React.useEffect(() => {
+    const updateTime = () => {
+      setCurrentUTCTime(new Date().toISOString().slice(0, 16))
+    }
+    updateTime()
+    const interval = setInterval(updateTime, 60000) // Update every minute
+    return () => clearInterval(interval)
+  }, [])
+
   const form = useForm<VestingFormValues>({
     resolver: zodResolver(vestingFormSchema),
     defaultValues: {
@@ -58,6 +72,8 @@ export function VestingCreationForm() {
 
   const onSubmit = async (values: VestingFormValues) => {
     console.log('Vesting creation values:', values)
+    console.log('TGE Date/Time (UTC):', new Date(values.vestingTGE).toISOString())
+    console.log('TGE Date/Time (Local):', new Date(values.vestingTGE).toLocaleString())
     // TODO: Implement vesting creation logic
   }
 
@@ -125,15 +141,20 @@ export function VestingCreationForm() {
                 name="vestingTGE"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-white">TGE Date</FormLabel>
+                    <FormLabel className="text-white">TGE Date & Time (UTC)</FormLabel>
                     <FormControl>
                       <Input
-                        type="date"
+                        type="datetime-local"
+                        min={new Date().toISOString().slice(0, 16)}
                         {...field}
                         className="bg-white/5 border-white/10 text-white placeholder:text-white/30
                           focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
                       />
                     </FormControl>
+                    <div className="text-xs text-white/40 mt-1 flex items-center gap-2">
+                      <Clock className="w-3 h-3" />
+                      Current UTC: {new Date().toISOString().replace('T', ' ').slice(0, 16)}
+                    </div>
                     <FormMessage className="text-red-400" />
                   </FormItem>
                 )}
