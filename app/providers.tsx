@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { NearWalletProvider } from '@/contexts/near-wallet'
 import {
   RainbowKitProvider,
   getDefaultConfig,
@@ -32,7 +33,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider theme={darkTheme()} modalSize="compact">
-          {mounted && children}
+          <NearWalletProvider>
+            {mounted && children}
+          </NearWalletProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
