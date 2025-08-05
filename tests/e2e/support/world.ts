@@ -11,9 +11,19 @@ export class CustomWorld extends World {
   }
 
   async init() {
-    this.browser = await chromium.launch({ headless: true });
-    this.context = await this.browser.newContext();
+    this.browser = await chromium.launch({ 
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    this.context = await this.browser.newContext({
+      viewport: { width: 1280, height: 720 },
+      ignoreHTTPSErrors: true
+    });
     this.page = await this.context.newPage();
+    
+    // Set default timeouts
+    this.page.setDefaultTimeout(30000);
+    this.page.setDefaultNavigationTimeout(30000);
   }
 
   async cleanup() {

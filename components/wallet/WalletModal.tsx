@@ -3,15 +3,21 @@ import Image from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
+import { type WalletType } from '@/hooks/useWallet';
 
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectWallet: (walletType: string, isNearWallet?: boolean) => void;
+  onSelectWallet: (walletType: WalletType) => void;
 }
 
 interface WalletError {
   message: string;
+}
+
+interface WalletConnectionError {
+  message?: string;
+  toString: () => string;
 }
 
 const POPULAR_WALLETS = [
@@ -73,22 +79,22 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSelectWall
   const [error, setError] = React.useState<WalletError | null>(null);
   const [selectedWallet, setSelectedWallet] = React.useState<string | null>(null);
 
-  const handleWalletSelect = async (walletType: string, isNearWallet?: boolean) => {
+  const handleWalletSelect = async (walletType: WalletType) => {
     setIsConnecting(true);
     setError(null);
     setSelectedWallet(walletType);
     
     try {
-      await onSelectWallet(walletType, isNearWallet);
-    } catch (err: any) {
+      await onSelectWallet(walletType);
+    } catch (err: unknown) {
       console.error('Wallet connection error:', err);
-      setError(getErrorFromException(err));
+      setError(getErrorFromException(err as WalletConnectionError));
     } finally {
       setIsConnecting(false);
     }
   };
 
-  const getErrorFromException = (err: any): WalletError => {
+  const getErrorFromException = (err: WalletConnectionError): WalletError => {
     const message = err.message || err.toString();
     
     if (message.includes('User rejected') || message.includes('user rejected')) {
@@ -100,8 +106,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSelectWall
 
   const handleRetry = () => {
     if (selectedWallet) {
-      const isNearWallet = NEAR_WALLETS.some(w => w.id === selectedWallet);
-      handleWalletSelect(selectedWallet, isNearWallet);
+      handleWalletSelect(selectedWallet as WalletType);
     }
   };
 
@@ -156,7 +161,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSelectWall
                 <Card
                   key={wallet.id}
                   className="flex cursor-pointer items-center p-4 hover:bg-accent"
-                  onClick={() => handleWalletSelect(wallet.id)}
+                  onClick={() => handleWalletSelect(wallet.id as WalletType)}
                   data-testid={`wallet-option-${wallet.id}`}
                 >
                   <div className="mr-4">
@@ -186,7 +191,7 @@ const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, onSelectWall
                 <Card
                   key={wallet.id}
                   className="flex cursor-pointer items-center p-4 hover:bg-accent"
-                  onClick={() => handleWalletSelect(wallet.id, true)}
+                  onClick={() => handleWalletSelect(wallet.id as WalletType)}
                   data-testid={`wallet-option-${wallet.id}`}
                 >
                   <div className="mr-4">

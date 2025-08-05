@@ -1,12 +1,23 @@
 import { useEffect } from 'react'
-import { useAccount, useConfig, useBalance } from 'wagmi'
+import { useAccount, useConfig, useBalance, useConnect } from 'wagmi'
+
+export type WalletType = 'metamask' | 'coinbase' | 'walletconnect' | 'rainbow';
 
 export function useWallet() {
   const account = useAccount()
   const config = useConfig()
+  const { connectAsync, connectors } = useConnect()
   const { data: balance } = useBalance({
     address: account.address,
   })
+
+  const connect = async (walletType: WalletType) => {
+    const connector = connectors.find(c => c.id === walletType)
+    if (!connector) {
+      throw new Error(`Connector not found for wallet type: ${walletType}`)
+    }
+    return connectAsync({ connector })
+  }
 
   useEffect(() => {
     // Account change handler
@@ -32,5 +43,6 @@ export function useWallet() {
     chain: config.chains.find(c => c.id === config.state.chainId),
     balance,
     isConnected: account.status === 'connected',
+    connect,
   }
 } 

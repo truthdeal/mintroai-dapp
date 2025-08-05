@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import WalletModal from './WalletModal';
-import { useWallet } from '@/hooks/useWallet';
+import { useWallet, type WalletType } from '@/hooks/useWallet';
 
 interface ConnectWalletButtonProps {
   className?: string;
@@ -11,7 +11,7 @@ const ConnectWalletButton: React.FC<ConnectWalletButtonProps> = ({ className }) 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { connect, isConnecting } = useWallet();
 
-  const handleWalletSelect = async (walletType: string) => {
+  const handleWalletSelect = async (walletType: WalletType) => {
     try {
       await connect(walletType);
       setIsModalOpen(false);

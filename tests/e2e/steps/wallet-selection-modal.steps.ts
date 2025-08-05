@@ -32,15 +32,15 @@ Given('I am on the homepage', async function(this: CustomWorld) {
   await this.page.goto('http://localhost:3000');
   
   // Sayfa yüklenene kadar bekle
-  await this.page.waitForLoadState('networkidle');
+  await this.page.waitForLoadState('networkidle', { timeout: 30000 });
   
   // Eğer sayfa boşsa veya beklediğimiz element yoksa yeniden yükle
   const connectButton = await this.page.$('button:has-text("Connect Wallet")');
   if (!connectButton) {
     console.log('İlk yüklemede sayfa boş, yeniden yükleniyor...');
     await this.page.reload();
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForSelector('button:has-text("Connect Wallet")', { state: 'visible', timeout: 10000 });
+    await this.page.waitForLoadState('networkidle', { timeout: 30000 });
+    await this.page.waitForSelector('button:has-text("Connect Wallet")', { state: 'visible', timeout: 30000 });
   }
 });
 

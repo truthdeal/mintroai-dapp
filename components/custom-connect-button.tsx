@@ -4,6 +4,12 @@ import { Wallet } from 'lucide-react'
 import { useState } from 'react'
 import WalletModal from './wallet/WalletModal'
 
+interface EthereumWindow extends Window {
+  ethereum?: {
+    request: (args: { method: string }) => Promise<string[]>;
+  };
+}
+
 export function CustomConnectButton() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false)
 
@@ -33,10 +39,11 @@ export function CustomConnectButton() {
             setIsWalletModalOpen(false)
           } else {
             // EVM cüzdanları için önce window.ethereum kontrolü yap
-            if (typeof window !== 'undefined' && (window as any).ethereum?.request) {
+            const ethWindow = window as EthereumWindow;
+            if (typeof window !== 'undefined' && ethWindow.ethereum?.request) {
               try {
                 // Test için window.ethereum.request'i çağır
-                await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+                await ethWindow.ethereum.request({ method: 'eth_requestAccounts' });
                 openConnectModal()
                 setIsWalletModalOpen(false)
               } catch (error) {
