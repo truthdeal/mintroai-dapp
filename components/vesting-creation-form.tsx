@@ -39,17 +39,6 @@ const vestingFormSchema = z.object({
 export type VestingFormValues = z.infer<typeof vestingFormSchema>
 
 export function VestingCreationForm() {
-  const [currentUTCTime, setCurrentUTCTime] = React.useState("")
-
-  React.useEffect(() => {
-    const updateTime = () => {
-      setCurrentUTCTime(new Date().toISOString().slice(0, 16))
-    }
-    updateTime()
-    const interval = setInterval(updateTime, 60000) // Update every minute
-    return () => clearInterval(interval)
-  }, [])
-
   const form = useForm<VestingFormValues>({
     resolver: zodResolver(vestingFormSchema),
     defaultValues: {
