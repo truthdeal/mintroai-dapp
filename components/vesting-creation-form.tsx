@@ -16,6 +16,7 @@ import { Calendar as CalendarIcon, Clock, Users, Trash2, Plus, Shield } from "lu
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { VestingConfirmationDialog } from "./vesting-confirmation-dialog"
 
 const vestingFormSchema = z.object({
   projectName: z.string().min(1, "Project name is required"),
@@ -39,6 +40,10 @@ const vestingFormSchema = z.object({
 export type VestingFormValues = z.infer<typeof vestingFormSchema>
 
 export function VestingCreationForm() {
+  const [showConfirmation, setShowConfirmation] = React.useState(false)
+  const [deploymentStatus, setDeploymentStatus] = React.useState<'idle' | 'creating' | 'compiling' | 'deploying' | 'success' | 'error'>('idle')
+  const [formData, setFormData] = React.useState<VestingFormValues | null>(null)
+
   const form = useForm<VestingFormValues>({
     resolver: zodResolver(vestingFormSchema),
     defaultValues: {
@@ -64,10 +69,41 @@ export function VestingCreationForm() {
   }
 
   const onSubmit = async (values: VestingFormValues) => {
-    console.log('Vesting creation values:', values)
-    console.log('TGE Date/Time (UTC):', new Date(values.vestingTGE).toISOString())
-    console.log('TGE Date/Time (Local):', new Date(values.vestingTGE).toLocaleString())
-    // TODO: Implement vesting creation logic
+    setFormData(values)
+    setShowConfirmation(true)
+  }
+
+  const handleConfirm = async () => {
+    if (!formData) return
+
+    try {
+      setDeploymentStatus('creating')
+      console.log('Vesting creation values:', formData)
+      console.log('TGE Date/Time (UTC):', new Date(formData.vestingTGE).toISOString())
+      console.log('TGE Date/Time (Local):', new Date(formData.vestingTGE).toLocaleString())
+      
+      // TODO: Implement vesting creation logic here
+      
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      setDeploymentStatus('success')
+      
+      setTimeout(() => {
+        setShowConfirmation(false)
+        setDeploymentStatus('idle')
+        setFormData(null)
+        form.reset()
+      }, 2000)
+      
+    } catch (error) {
+      console.error('Vesting creation error:', error)
+      setDeploymentStatus('error')
+    }
+  }
+
+  const handleCancel = () => {
+    setShowConfirmation(false)
+    setDeploymentStatus('idle')
+    setFormData(null)
   }
 
   return (
@@ -485,6 +521,14 @@ export function VestingCreationForm() {
           </div>
         </div>
       </form>
+
+      <VestingConfirmationDialog
+        isOpen={showConfirmation}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+        formData={formData || {} as VestingFormValues}
+        deploymentStatus={deploymentStatus}
+      />
     </Form>
   )
 } 
