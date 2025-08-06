@@ -9,9 +9,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import { motion } from "framer-motion"
-import { Calendar, Clock, Users, Trash2, Plus, Shield } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, Users, Trash2, Plus, Shield } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
 
 const vestingFormSchema = z.object({
   projectName: z.string().min(1, "Project name is required"),
@@ -84,7 +88,7 @@ export function VestingCreationForm() {
           <div className="flex items-center">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
-                <Calendar className="w-6 h-6 text-primary" />
+                <CalendarIcon className="w-6 h-6 text-primary" />
               </div>
               <h2 className="text-xl font-semibold text-white">Vesting Schedule</h2>
             </div>
@@ -143,21 +147,90 @@ export function VestingCreationForm() {
                   <FormItem>
                     <FormLabel className="text-white">TGE Date & Time (UTC)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="datetime-local"
-                        min={new Date().toISOString().slice(0, 16)}
-                        {...field}
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/50
-                          focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300
-                          [&::-webkit-calendar-picker-indicator]:opacity-100 
-                          [&::-webkit-calendar-picker-indicator]:brightness-0 
-                          [&::-webkit-calendar-picker-indicator]:invert 
-                          [&::-webkit-calendar-picker-indicator]:cursor-pointer
-                          [&::-webkit-calendar-picker-indicator]:hover:bg-primary/20
-                          [&::-webkit-calendar-picker-indicator]:rounded-sm
-                          [&::-webkit-calendar-picker-indicator]:w-5
-                          [&::-webkit-calendar-picker-indicator]:h-5"
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal bg-white/5 border-white/10 text-white hover:bg-white/10",
+                              !field.value && "text-white/50"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? (
+                              format(new Date(field.value), "PPP HH:mm")
+                            ) : (
+                              <span>Pick a date & time</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 bg-black/90 border-white/10" align="start">
+                          <div className="p-3 space-y-3">
+                            <Calendar
+                              mode="single"
+                              selected={field.value ? new Date(field.value) : undefined}
+                              onSelect={(date: Date | undefined) => {
+                                if (date) {
+                                  const currentTime = field.value ? new Date(field.value) : new Date()
+                                  date.setHours(currentTime.getHours())
+                                  date.setMinutes(currentTime.getMinutes())
+                                  field.onChange(date.toISOString())
+                                }
+                              }}
+                              disabled={(date) => date < new Date()}
+                              initialFocus
+                              className="bg-transparent"
+                            />
+                            <div className="border-t border-white/10 pt-3">
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-primary" />
+                                <span className="text-sm text-white">Time (UTC):</span>
+                              </div>
+                              <div className="flex gap-2 mt-2">
+                                <Select
+                                  value={field.value ? new Date(field.value).getHours().toString().padStart(2, '0') : "00"}
+                                  onValueChange={(hour) => {
+                                    const date = field.value ? new Date(field.value) : new Date()
+                                    date.setHours(parseInt(hour))
+                                    field.onChange(date.toISOString())
+                                  }}
+                                >
+                                  <SelectTrigger className="w-20 bg-white/5 border-white/10 text-white">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-black/90 border-white/10 max-h-40">
+                                    {Array.from({ length: 24 }, (_, i) => (
+                                      <SelectItem key={i} value={i.toString().padStart(2, '0')} className="text-white focus:text-white focus:bg-white/10">
+                                        {i.toString().padStart(2, '0')}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <span className="text-white self-center">:</span>
+                                <Select
+                                  value={field.value ? new Date(field.value).getMinutes().toString().padStart(2, '0') : "00"}
+                                  onValueChange={(minute) => {
+                                    const date = field.value ? new Date(field.value) : new Date()
+                                    date.setMinutes(parseInt(minute))
+                                    field.onChange(date.toISOString())
+                                  }}
+                                >
+                                  <SelectTrigger className="w-20 bg-white/5 border-white/10 text-white">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-black/90 border-white/10 max-h-40">
+                                    {Array.from({ length: 60 }, (_, i) => (
+                                      <SelectItem key={i} value={i.toString().padStart(2, '0')} className="text-white focus:text-white focus:bg-white/10">
+                                        {i.toString().padStart(2, '0')}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </FormControl>
                     <div className="text-xs text-white/40 mt-1 flex items-center gap-2">
                       <Clock className="w-3 h-3" />
