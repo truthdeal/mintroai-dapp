@@ -194,7 +194,6 @@ export function VestingConfirmationDialog({
                           <span className="text-white font-medium">{user.amount}</span>
                         </div>
                         <div className="text-white/50 font-mono text-xs truncate">{user.address}</div>
-                        {user.role && <div className="text-primary text-xs">{user.role}</div>}
                       </div>
                     ))}
                   </div>

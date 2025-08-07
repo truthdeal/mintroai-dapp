@@ -32,8 +32,7 @@ const vestingFormSchema = z.object({
   totalVestingAmount: z.string().min(1, "Total vesting amount is required"),
   vestingUsers: z.array(z.object({
     address: z.string().min(42, "Valid wallet address is required").max(42, "Invalid wallet address"),
-    amount: z.string().min(1, "Amount is required"),
-    role: z.string().optional()
+    amount: z.string().min(1, "Amount is required")
   })).optional()
 })
 
@@ -65,7 +64,7 @@ export function VestingCreationForm() {
   })
 
   const addVestingUser = () => {
-    append({ address: "", amount: "", role: "" })
+    append({ address: "", amount: "" })
   }
 
   const onSubmit = async (values: VestingFormValues) => {
@@ -468,25 +467,6 @@ export function VestingCreationForm() {
                           )}
                         />
                       </div>
-
-                      <FormField
-                        control={form.control}
-                        name={`vestingUsers.${index}.role`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-white">Role (Optional)</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Team Member, Advisor, Investor..."
-                                {...field}
-                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30
-                                  focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
-                              />
-                            </FormControl>
-                            <FormMessage className="text-red-400" />
-                          </FormItem>
-                        )}
-                      />
                     </motion.div>
                   ))}
 
