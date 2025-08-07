@@ -136,7 +136,9 @@ export function VestingConfirmationDialog({
                   </div>
                   <div className="space-y-1">
                     <div className="text-xs text-white/50">Token Contract Address</div>
-                    <ValueDisplay value={formData.tokenContractAddress} />
+                    <div className="font-medium font-mono text-sm break-all">
+                      {formData.tokenContractAddress}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -189,11 +191,11 @@ export function VestingConfirmationDialog({
                   <div className="space-y-2 max-h-32 overflow-y-auto">
                     {formData.vestingUsers.map((user, index) => (
                       <div key={index} className="bg-white/5 rounded p-2 text-xs">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center mb-1">
                           <span className="text-white/70">#{index + 1}</span>
                           <span className="text-white font-medium">{user.amount}</span>
                         </div>
-                        <div className="text-white/50 font-mono text-xs truncate">{user.address}</div>
+                        <div className="text-white/50 font-mono text-xs break-all">{user.address}</div>
                       </div>
                     ))}
                   </div>
