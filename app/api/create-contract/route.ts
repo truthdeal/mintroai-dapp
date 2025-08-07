@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Type for the contract data
-interface ContractData {
+// Type for token contract data
+interface TokenContractData {
+  contractType: 'token';
   chatId: string;
   contractName: string;
   tokenName: string;
@@ -20,17 +21,33 @@ interface ContractData {
   cooldownTime: number;
 }
 
+// Type for vesting contract data
+interface VestingContractData {
+  contractType: 'vesting';
+  chatId: string;
+  contractName: string;
+  tokenAddress: string;
+  tgeTimestamp: number;
+  tgeRate: number;
+  cliff: number;
+  releaseRate: number;
+  period: number;
+  vestingSupply: number;
+  decimals: number;
+  users: string[];
+  amts: number[];
+}
+
+type ContractData = TokenContractData | VestingContractData;
+
 export async function POST(request: NextRequest) {
   try {
     const contractData: ContractData = await request.json();
 
-    // Make the request to your contract generator service
     const response = await fetch(`${process.env.NEXT_PUBLIC_CONTRACT_GENERATOR_URL}/api/generate-contract`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Add any additional headers like API keys if needed
-        // 'Authorization': `Bearer ${process.env.API_KEY}`,
       },
       body: JSON.stringify(contractData),
     });

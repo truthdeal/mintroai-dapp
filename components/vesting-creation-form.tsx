@@ -17,6 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { VestingConfirmationDialog } from "./vesting-confirmation-dialog"
+import { useSession } from "@/hooks/useSession"
+import { useAccount } from 'wagmi'
+import { useTokenDeploy } from '@/hooks/useTokenDeploy'
 
 const vestingFormSchema = z.object({
   projectName: z.string().min(1, "Project name is required"),
@@ -39,6 +42,10 @@ const vestingFormSchema = z.object({
 export type VestingFormValues = z.infer<typeof vestingFormSchema>
 
 export function VestingCreationForm() {
+  const { sessionId } = useSession()
+  const { address } = useAccount()
+  const { deploy, isPending, isWaiting, isSuccess, error, hash, receipt } = useTokenDeploy()
+  
   const [showConfirmation, setShowConfirmation] = React.useState(false)
   const [deploymentStatus, setDeploymentStatus] = React.useState<'idle' | 'creating' | 'compiling' | 'deploying' | 'success' | 'error'>('idle')
   const [formData, setFormData] = React.useState<VestingFormValues | null>(null)
@@ -67,32 +74,105 @@ export function VestingCreationForm() {
     append({ address: "", amount: "" })
   }
 
-  const onSubmit = async (values: VestingFormValues) => {
-    setFormData(values)
-    setShowConfirmation(true)
-  }
-
-  const handleConfirm = async () => {
-    if (!formData) return
-
-    try {
-      setDeploymentStatus('creating')
-      console.log('Vesting creation values:', formData)
-      console.log('TGE Date/Time (UTC):', new Date(formData.vestingTGE).toISOString())
-      console.log('TGE Date/Time (Local):', new Date(formData.vestingTGE).toLocaleString())
-      
-      // TODO: Implement vesting creation logic here
-      
-      await new Promise(resolve => setTimeout(resolve, 2000))
+  // useEffect to track deployment status
+  React.useEffect(() => {
+    if (isPending || isWaiting) {
+      setDeploymentStatus('deploying')
+    } else if (isSuccess && receipt) {
       setDeploymentStatus('success')
+      const deployedAddr = receipt.logs[0].address
+      console.log('Transaction hash:', hash)
+      console.log('Deployed vesting contract address:', deployedAddr)
       
+      // Reset form after successful creation
       setTimeout(() => {
         setShowConfirmation(false)
         setDeploymentStatus('idle')
         setFormData(null)
         form.reset()
       }, 2000)
+    } else if (error) {
+      setDeploymentStatus('error')
+    }
+  }, [isPending, isWaiting, isSuccess, error, hash, receipt, form])
+
+  const onSubmit = async (values: VestingFormValues) => {
+    if (!address) {
+      console.error('Please connect your wallet first');
+      return;
+    }
+    
+    setFormData(values)
+    setShowConfirmation(true)
+  }
+
+  const handleConfirm = async () => {
+    if (!formData || !address) return
+
+    try {
+      // Contract Creation
+      setDeploymentStatus('creating')
       
+      // Convert form data to API format
+      const users = formData.vestingUsers?.map(user => user.address) || []
+      const amts = formData.vestingUsers?.map(user => parseInt(user.amount)) || []
+      
+      const contractData = {
+        contractType: 'vesting' as const,
+        chatId: sessionId,
+        contractName: formData.projectName,
+        tokenAddress: formData.tokenContractAddress,
+        tgeTimestamp: Math.floor(new Date(formData.vestingTGE).getTime() / 1000), // Convert to Unix timestamp
+        tgeRate: formData.tgeReleasePercentage,
+        cliff: formData.cliffMonths,
+        releaseRate: formData.releaseMonthsCount,
+        period: formData.vestingType === 'daily' ? 1 : 30, // 1 day or 30 days
+        vestingSupply: parseInt(formData.totalVestingAmount),
+        decimals: 18, // Default to 18 decimals for vesting contracts
+        users,
+        amts,
+      };
+
+      console.log('Contract data:', contractData);
+
+      // 1. Contract Creation
+      const createResponse = await fetch('/api/create-contract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contractData),
+      });
+
+      if (!createResponse.ok) {
+        throw new Error('Failed to create vesting contract');
+      }
+
+      const createData = await createResponse.json();
+      console.log('Vesting contract created:', createData);
+
+      // 2. Contract Compilation
+      setDeploymentStatus('compiling')
+      const compileResponse = await fetch('/api/compile-contract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId: sessionId }),
+      });
+
+      if (!compileResponse.ok) {
+        throw new Error('Failed to compile vesting contract');
+      }
+
+      const compileData = await compileResponse.json();
+      console.log('Vesting contract compiled:', compileData);
+
+      // 3. Deploy contract
+      const deployResponse = await deploy(compileData.bytecode);
+      console.log('Vesting contract deployed:', deployResponse);
+
+
     } catch (error) {
       console.error('Vesting creation error:', error)
       setDeploymentStatus('error')

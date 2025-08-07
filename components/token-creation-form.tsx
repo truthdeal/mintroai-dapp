@@ -208,6 +208,7 @@ export function TokenCreationForm() {
       // Contract Creation
       setDeploymentStatus('creating')
       const contractData = {
+        contractType: 'token' as const,
         chatId: sessionId,
         contractName: form.getValues().name,
         tokenName: form.getValues().name,
