@@ -12,7 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { motion } from "framer-motion"
-import { Calendar as CalendarIcon, Clock, Users, Trash2, Plus, Shield } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, Users, Trash2, Plus } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -492,8 +492,7 @@ export function VestingCreationForm() {
                 relative overflow-hidden group"
             >
               <span className="relative z-10 flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                Create Vesting Schedule
+                Create Vesting Contract
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/10 to-primary/0 
                 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
