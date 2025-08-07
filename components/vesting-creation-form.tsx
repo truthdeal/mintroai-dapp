@@ -24,6 +24,7 @@ import { useTokenDeploy } from '@/hooks/useTokenDeploy'
 const vestingFormSchema = z.object({
   projectName: z.string().min(1, "Project name is required"),
   tokenContractAddress: z.string().min(42, "Valid contract address is required").max(42, "Invalid contract address"),
+  tokenDecimals: z.number().min(0).max(18),
   vestingTGE: z.string().min(1, "TGE date and time (UTC) is required").refine((val) => {
     const date = new Date(val);
     return date > new Date();
@@ -55,6 +56,7 @@ export function VestingCreationForm() {
     defaultValues: {
       projectName: "",
       tokenContractAddress: "",
+      tokenDecimals: 18,
       vestingTGE: "",
       tgeReleasePercentage: 10,
       cliffMonths: 6,
@@ -132,7 +134,7 @@ export function VestingCreationForm() {
         releaseRate: formData.releaseMonthsCount,
         period: formData.vestingType === 'daily' ? 1 : 30, // 1 day or 30 days
         vestingSupply: parseInt(formData.totalVestingAmount),
-        decimals: 18, // Default to 18 decimals for vesting contracts
+        decimals: formData.tokenDecimals,
         users,
         amts,
       };
@@ -228,24 +230,48 @@ export function VestingCreationForm() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="tokenContractAddress"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-white">Token Contract Address</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="0x..."
-                      {...field}
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30
-                        focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 font-mono"
-                    />
-                  </FormControl>
-                  <FormMessage className="text-red-400" />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="tokenContractAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Token Contract Address</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="0x..."
+                        {...field}
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30
+                          focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 font-mono"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="tokenDecimals"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white">Token Decimals</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="18"
+                        value={field.value.toString()}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30
+                          focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-red-400" />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField

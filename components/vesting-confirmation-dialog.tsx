@@ -133,10 +133,16 @@ export function VestingConfirmationDialog({
                   <div className="text-xs text-white/50">Project Name</div>
                   <ValueDisplay value={formData.projectName} />
                 </div>
-                <div className="space-y-1">
-                  <div className="text-xs text-white/50">Token Contract Address</div>
-                  <div className="font-medium font-mono text-sm break-all">
-                    {formData.tokenContractAddress}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <div className="text-xs text-white/50">Token Contract Address</div>
+                    <div className="font-medium font-mono text-xs break-all">
+                      {formData.tokenContractAddress}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-xs text-white/50">Token Decimals</div>
+                    <ValueDisplay value={formData.tokenDecimals} />
                   </div>
                 </div>
               </div>
