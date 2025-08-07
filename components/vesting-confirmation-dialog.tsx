@@ -27,7 +27,7 @@ function ValueDisplay({ value, symbol }: { value: string | number, symbol?: stri
 function VestingTypeDisplay({ type }: { type: "daily" | "monthly" }) {
   return (
     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/20 text-primary border border-primary/20">
-      {type === "daily" ? "Daily Vesting" : "Monthly Vesting"}
+      {type === "daily" ? "Daily Linear Vesting" : "Monthly Linear Vesting"}
     </span>
   )
 }

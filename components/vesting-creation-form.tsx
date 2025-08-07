@@ -359,10 +359,10 @@ export function VestingCreationForm() {
                           </FormControl>
                           <SelectContent className="bg-black/90 border-white/10">
                             <SelectItem value="daily" className="text-white focus:text-white focus:bg-white/10">
-                              Daily Vesting
+                              Daily Linear Vesting
                             </SelectItem>
                             <SelectItem value="monthly" className="text-white focus:text-white focus:bg-white/10">
-                              Monthly Vesting
+                              Monthly Linear Vesting
                             </SelectItem>
                           </SelectContent>
                         </Select>
