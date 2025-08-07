@@ -91,7 +91,7 @@ export function VestingConfirmationDialog({
     <AlertDialog open={isOpen}>
       <AlertDialogContent className={cn(
         "bg-black/90 border-white/10 backdrop-blur-xl text-white",
-        "w-[90vw] md:w-[500px]",
+        "w-[90vw] md:w-[400px]",
         "p-3",
         "rounded-lg",
         "overflow-auto",
@@ -129,16 +129,14 @@ export function VestingConfirmationDialog({
               {/* Project Details */}
               <div className="space-y-2">
                 <div className="text-sm text-white/50">Project Details</div>
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="space-y-1">
-                    <div className="text-xs text-white/50">Project Name</div>
-                    <ValueDisplay value={formData.projectName} />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-xs text-white/50">Token Contract Address</div>
-                    <div className="font-medium font-mono text-sm break-all">
-                      {formData.tokenContractAddress}
-                    </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-white/50">Project Name</div>
+                  <ValueDisplay value={formData.projectName} />
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-white/50">Token Contract Address</div>
+                  <div className="font-medium font-mono text-sm break-all">
+                    {formData.tokenContractAddress}
                   </div>
                 </div>
               </div>
@@ -153,7 +151,9 @@ export function VestingConfirmationDialog({
                   </div>
                   <div className="space-y-1">
                     <div className="text-xs text-white/50">TGE Release</div>
-                    <ValueDisplay value={formData.tgeReleasePercentage} symbol="%" />
+                    <span className="font-medium text-primary">
+                      {formData.tgeReleasePercentage}%
+                    </span>
                   </div>
                 </div>
               </div>
@@ -186,14 +186,14 @@ export function VestingConfirmationDialog({
                 <div className="pt-3 border-t border-white/10 space-y-2">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-primary" />
-                    <div className="text-sm text-white/50">Vesting Recipients ({formData.vestingUsers.length})</div>
+                    <div className="text-sm text-white/50">Recipients ({formData.vestingUsers.length})</div>
                   </div>
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                  <div className="space-y-2 max-h-24 overflow-y-auto">
                     {formData.vestingUsers.map((user, index) => (
                       <div key={index} className="bg-white/5 rounded p-2 text-xs">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-white/70">#{index + 1}</span>
-                          <span className="text-white font-medium">{user.amount}</span>
+                          <span className="text-primary font-medium">{user.amount}</span>
                         </div>
                         <div className="text-white/50 font-mono text-xs break-all">{user.address}</div>
                       </div>
