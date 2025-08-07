@@ -117,12 +117,16 @@ export function VestingCreationForm() {
       const users = formData.vestingUsers?.map(user => user.address) || []
       const amts = formData.vestingUsers?.map(user => parseInt(user.amount)) || []
       
+      // Parse TGE date to seconds timestamp for blockchain
+      const tgeDate = new Date(formData.vestingTGE);
+      const tgeTimestamp = Math.floor(tgeDate.getTime() / 1000);
+      
       const contractData = {
         contractType: 'vesting' as const,
         chatId: sessionId,
         contractName: formData.projectName,
         tokenAddress: formData.tokenContractAddress,
-        tgeTimestamp: Math.floor(new Date(formData.vestingTGE).getTime() / 1000), // Convert to Unix timestamp
+        tgeTimestamp: tgeTimestamp,
         tgeRate: formData.tgeReleasePercentage,
         cliff: formData.cliffMonths,
         releaseRate: formData.releaseMonthsCount,
@@ -262,7 +266,13 @@ export function VestingCreationForm() {
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? (
-                              format(new Date(field.value), "PPP HH:mm")
+                              (() => {
+                                const utcDate = new Date(field.value);
+                                const formattedDate = format(utcDate, "PPP");
+                                const utcHours = utcDate.getUTCHours().toString().padStart(2, '0');
+                                const utcMinutes = utcDate.getUTCMinutes().toString().padStart(2, '0');
+                                return `${formattedDate} ${utcHours}:${utcMinutes} UTC`;
+                              })()
                             ) : (
                               <span>Pick a date & time</span>
                             )}
@@ -276,8 +286,8 @@ export function VestingCreationForm() {
                               onSelect={(date: Date | undefined) => {
                                 if (date) {
                                   const currentTime = field.value ? new Date(field.value) : new Date()
-                                  date.setHours(currentTime.getHours())
-                                  date.setMinutes(currentTime.getMinutes())
+                                  date.setUTCHours(currentTime.getUTCHours())
+                                  date.setUTCMinutes(currentTime.getUTCMinutes())
                                   field.onChange(date.toISOString())
                                 }
                               }}
@@ -292,10 +302,10 @@ export function VestingCreationForm() {
                               </div>
                               <div className="flex gap-2 mt-2">
                                 <Select
-                                  value={field.value ? new Date(field.value).getHours().toString().padStart(2, '0') : "00"}
+                                  value={field.value ? new Date(field.value).getUTCHours().toString().padStart(2, '0') : "00"}
                                   onValueChange={(hour) => {
                                     const date = field.value ? new Date(field.value) : new Date()
-                                    date.setHours(parseInt(hour))
+                                    date.setUTCHours(parseInt(hour))
                                     field.onChange(date.toISOString())
                                   }}
                                 >
@@ -312,10 +322,10 @@ export function VestingCreationForm() {
                                 </Select>
                                 <span className="text-white self-center">:</span>
                                 <Select
-                                  value={field.value ? new Date(field.value).getMinutes().toString().padStart(2, '0') : "00"}
+                                  value={field.value ? new Date(field.value).getUTCMinutes().toString().padStart(2, '0') : "00"}
                                   onValueChange={(minute) => {
                                     const date = field.value ? new Date(field.value) : new Date()
-                                    date.setMinutes(parseInt(minute))
+                                    date.setUTCMinutes(parseInt(minute))
                                     field.onChange(date.toISOString())
                                   }}
                                 >

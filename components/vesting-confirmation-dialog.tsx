@@ -147,7 +147,21 @@ export function VestingConfirmationDialog({
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <div className="text-xs text-white/50">TGE Date & Time (UTC)</div>
-                    <ValueDisplay value={formData.vestingTGE ? format(new Date(formData.vestingTGE), "PPP HH:mm") : "Not set"} />
+                    {formData.vestingTGE ? (
+                      (() => {
+                        const utcDate = new Date(formData.vestingTGE);
+                        const formattedDate = format(utcDate, "PPP");
+                        const utcHours = utcDate.getUTCHours().toString().padStart(2, '0');
+                        const utcMinutes = utcDate.getUTCMinutes().toString().padStart(2, '0');
+                        return (
+                          <span className="font-medium">
+                            {formattedDate} {utcHours}:{utcMinutes} UTC
+                          </span>
+                        );
+                      })()
+                    ) : (
+                      <span className="font-medium">Not set</span>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <div className="text-xs text-white/50">TGE Release</div>
