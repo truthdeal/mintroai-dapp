@@ -285,13 +285,30 @@ export function VestingCreationForm() {
                               selected={field.value ? new Date(field.value) : undefined}
                               onSelect={(date: Date | undefined) => {
                                 if (date) {
-                                  const currentTime = field.value ? new Date(field.value) : new Date()
-                                  date.setUTCHours(currentTime.getUTCHours())
-                                  date.setUTCMinutes(currentTime.getUTCMinutes())
-                                  field.onChange(date.toISOString())
+                                  // UTC time
+                                  const utcDate = new Date(Date.UTC(
+                                    date.getFullYear(),
+                                    date.getMonth(), 
+                                    date.getDate(),
+                                    0, // Hour
+                                    0  // Minute
+                                  ));
+                                  
+                                  if (field.value) {
+                                    const currentTime = new Date(field.value);
+                                    utcDate.setUTCHours(currentTime.getUTCHours());
+                                    utcDate.setUTCMinutes(currentTime.getUTCMinutes());
+                                  }
+                                  
+                                  field.onChange(utcDate.toISOString());
                                 }
                               }}
-                              disabled={(date) => date < new Date()}
+                              disabled={(date) => {
+                                // Disable past dates, today is not included
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                return date < today;
+                              }}
                               initialFocus
                               className="bg-transparent"
                             />
