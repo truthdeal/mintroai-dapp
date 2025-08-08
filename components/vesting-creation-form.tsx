@@ -20,6 +20,7 @@ import { VestingConfirmationDialog } from "./vesting-confirmation-dialog"
 import { useSession } from "@/hooks/useSession"
 import { useAccount } from 'wagmi'
 import { useTokenDeploy } from '@/hooks/useTokenDeploy'
+import { useWebSocket } from "@/hooks/useWebSocket"
 
 const vestingFormSchema = z.object({
   projectName: z.string().min(1, "Project name is required"),
@@ -43,13 +44,14 @@ const vestingFormSchema = z.object({
 export type VestingFormValues = z.infer<typeof vestingFormSchema>
 
 export function VestingCreationForm() {
-  const { sessionId } = useSession()
+  const { sessionId, isInitialized } = useSession()
   const { address } = useAccount()
   const { deploy, isPending, isWaiting, isSuccess, error, hash, receipt } = useTokenDeploy()
   
   const [showConfirmation, setShowConfirmation] = React.useState(false)
   const [deploymentStatus, setDeploymentStatus] = React.useState<'idle' | 'creating' | 'compiling' | 'deploying' | 'success' | 'error'>('idle')
   const [formData, setFormData] = React.useState<VestingFormValues | null>(null)
+  const [updatedFields, setUpdatedFields] = React.useState<Set<string>>(new Set())
 
   const form = useForm<VestingFormValues>({
     resolver: zodResolver(vestingFormSchema),
@@ -75,6 +77,140 @@ export function VestingCreationForm() {
   const addVestingUser = () => {
     append({ address: "", amount: "" })
   }
+
+  const mapConfigToFormFields = (config: Record<string, unknown>) => {
+    const fieldMapping: { [key: string]: string } = {
+      'name': 'projectName',
+      'tokenContractAddress': 'tokenContractAddress', 
+      'tokenDecimals': 'tokenDecimals',
+      'tgeTimestamp': 'vestingTGE',
+      'tgeRate': 'tgeReleasePercentage',
+      'cliff': 'cliffMonths',
+      'releasePeriod': 'releaseMonthsCount',
+      'vestingPeriod': 'vestingType',
+      'vestingSupply': 'totalVestingAmount',
+      'users': 'vestingUsers',
+      'amounts': 'vestingUsers' // amounts will be merged with users
+    }
+
+    const mappedConfig: Record<string, unknown> = {}
+    
+    Object.keys(config).forEach(apiKey => {
+      const formFieldName = fieldMapping[apiKey]
+      if (formFieldName) {
+        let value = config[apiKey]
+        
+        // Special handling for different field types
+        if (apiKey === 'tgeTimestamp') {
+          // Convert Unix timestamp to ISO string (comes as string)
+          const timestamp = typeof value === 'string' ? parseInt(value) : value as number
+          value = new Date(timestamp * 1000).toISOString()
+        } else if (apiKey === 'vestingPeriod') {
+          // Convert API format to form format
+          value = (value as string).toLowerCase() // "monthly" or "daily"
+        } else if (apiKey === 'vestingSupply') {
+          // Keep as string for form (already comes as string)
+          value = value as string
+        } else if (apiKey === 'tokenDecimals') {
+          // Convert string to number for form
+          value = typeof value === 'string' ? parseInt(value) : value as number
+        } else if (apiKey === 'tgeRate' || apiKey === 'cliff' || apiKey === 'releasePeriod') {
+          // Convert string to number for form
+          value = typeof value === 'string' ? parseInt(value) : value as number
+        } else if (apiKey === 'users' && config.amounts) {
+          // Combine users and amounts into vestingUsers array
+          // Parse string arrays to actual arrays
+          const usersStr = config.users as string
+          const amountsStr = config.amounts as string
+          
+          let users: string[] = []
+          let amounts: number[] = []
+          
+          try {
+            users = usersStr ? JSON.parse(usersStr) : []
+            amounts = amountsStr ? JSON.parse(amountsStr) : []
+          } catch (error) {
+            console.error('Failed to parse users or amounts:', error)
+            users = []
+            amounts = []
+          }
+          
+          value = users.map((address: string, index: number) => ({
+            address,
+            amount: amounts[index]?.toString() || ""
+          }))
+        }
+        
+        // Skip amounts as it's handled with users
+        if (apiKey !== 'amounts') {
+          mappedConfig[formFieldName] = value
+        }
+      }
+    })
+
+    return mappedConfig
+  }
+
+  // WebSocket integration
+  useWebSocket(sessionId, isInitialized, (config) => {
+    console.log('Vesting form received config update:', config)
+    console.log('Current form values:', form.getValues())
+    
+    const mappedConfig = mapConfigToFormFields(config)
+    console.log('Mapped config:', mappedConfig)
+    
+    const newUpdatedFields = new Set<string>()
+    let hasChanges = false
+    
+    // Update form values
+    Object.keys(mappedConfig).forEach((fieldName) => {
+      if (fieldName in form.getValues()) {
+        const value = mappedConfig[fieldName]
+        const currentValue = form.getValues()[fieldName as keyof VestingFormValues]
+        
+        // Type conversion if needed
+        let convertedValue = value
+        const formValueType = typeof currentValue
+        
+        if (formValueType === 'number' && typeof value === 'string') {
+          convertedValue = parseFloat(value)
+        } else if (formValueType === 'string' && typeof value === 'number') {
+          convertedValue = value.toString()
+        } else if (formValueType === 'boolean' && typeof value !== 'boolean') {
+          convertedValue = Boolean(value)
+        }
+
+        // Check if value has changed
+        const hasChanged = JSON.stringify(currentValue) !== JSON.stringify(convertedValue)
+        if (hasChanged) {
+          console.log(`Updating vesting form field: ${fieldName} with value:`, convertedValue)
+          form.setValue(fieldName as keyof VestingFormValues, convertedValue as never, {
+            shouldValidate: true,
+            shouldDirty: true,
+            shouldTouch: true,
+          })
+          newUpdatedFields.add(fieldName)
+          hasChanges = true
+        } else {
+          console.log(`Vesting field ${fieldName} unchanged, no update needed.`)
+        }
+      } else {
+        console.log(`Vesting field ${fieldName} not found in form`)
+      }
+    })
+    
+    // Update highlighted fields
+    if (hasChanges) {
+      setUpdatedFields(new Set(newUpdatedFields))
+      
+      // Clear highlights after 4 seconds
+      setTimeout(() => {
+        setUpdatedFields(new Set())
+      }, 4000)
+    }
+    
+    console.log('Updated vesting form values:', form.getValues())
+  })
 
   // useEffect to track deployment status
   React.useEffect(() => {
@@ -221,8 +357,10 @@ export function VestingCreationForm() {
                     <Input
                       placeholder="My Amazing Project"
                       {...field}
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30
-                        focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                      className={`bg-white/5 border-white/10 text-white placeholder:text-white/30
+                        focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 ${
+                        updatedFields.has("projectName") ? 'highlight-update' : ''
+                      }`}
                     />
                   </FormControl>
                   <FormMessage className="text-red-400" />
@@ -241,8 +379,10 @@ export function VestingCreationForm() {
                       <Input
                         placeholder="0x..."
                         {...field}
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30
-                          focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 font-mono"
+                        className={`bg-white/5 border-white/10 text-white placeholder:text-white/30
+                          focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 font-mono ${
+                          updatedFields.has("tokenContractAddress") ? 'highlight-update' : ''
+                        }`}
                       />
                     </FormControl>
                     <FormMessage className="text-red-400" />
@@ -263,8 +403,10 @@ export function VestingCreationForm() {
                         max="18"
                         value={field.value.toString()}
                         onChange={(e) => field.onChange(Number(e.target.value))}
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30
-                          focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                        className={`bg-white/5 border-white/10 text-white placeholder:text-white/30
+                          focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 ${
+                          updatedFields.has("tokenDecimals") ? 'highlight-update' : ''
+                        }`}
                       />
                     </FormControl>
                     <FormMessage className="text-red-400" />
