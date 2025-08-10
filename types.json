@@ -1,0 +1,14 @@
+{{ $('Input Editing').item.json.chatInput }} 
+{"current_parameters" : 
+{ "name" : "" , 
+"tokenContractAddress" : "",
+"tokenDecimals" : 18,
+"tgeTimestamp" : 0,
+"tgeRate" : 10,
+"cliff" : 6,
+"releasePeriod" : 24,
+"vestingPeriod" : "monthly",
+"vestingSupply" : 0,
+"users" : [],
+"amounts" : []
+}} 

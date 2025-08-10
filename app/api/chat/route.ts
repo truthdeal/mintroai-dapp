@@ -3,9 +3,16 @@ import { NextRequest, NextResponse } from 'next/server'
 if (!process.env.NEXT_PUBLIC_CHAT_URL) {
   throw new Error('NEXT_PUBLIC_CHAT_URL is not defined in environment variables')
 }
+if (!process.env.NEXT_PUBLIC_CHAT_URL_GENERAL) {
+  throw new Error('NEXT_PUBLIC_CHAT_URL_GENERAL is not defined in environment variables')
+}
+if (!process.env.NEXT_PUBLIC_CHAT_URL_VESTING) {
+  throw new Error('NEXT_PUBLIC_CHAT_URL_VESTING is not defined in environment variables')
+}
 
 const CHAT_URL = process.env.NEXT_PUBLIC_CHAT_URL
 const CHAT_URL_GENERAL = process.env.NEXT_PUBLIC_CHAT_URL_GENERAL
+const CHAT_URL_VESTING = process.env.NEXT_PUBLIC_CHAT_URL_VESTING
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -50,6 +57,18 @@ export async function POST(req: NextRequest) {
         chatInput,
       }),
     })
+    } else if (mode === 'vesting') {
+      fetchPromise = fetch(`${CHAT_URL_VESTING}/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          action: 'sendMessage',
+          chatInput,
+        }),
+      })
     } else {
       throw new Error('Invalid mode');
     }

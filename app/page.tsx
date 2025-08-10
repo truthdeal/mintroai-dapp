@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Card } from "@/components/ui/card"
 import { TokenCreationForm } from "@/components/token-creation-form"
 import { AIChat } from "@/components/ai-chat"
+import { VestingCreationForm } from "@/components/vesting-creation-form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -68,6 +69,9 @@ export default function DappPage() {
                       <SelectItem value="general" className="text-white focus:text-white focus:bg-white/10">
                         General Purpose
                       </SelectItem>
+                      <SelectItem value="vesting" className="text-white focus:text-white focus:bg-white/10">
+                        Vesting Creation
+                      </SelectItem>
                       {/* <SelectItem value="nft" className="text-white focus:text-white focus:bg-white/10">
                         NFT Creation
                       </SelectItem>
@@ -103,6 +107,8 @@ export default function DappPage() {
                 <TokenCreationForm />
               ) : creationType === "general" ? (
                 <GeneralPurposeExamples onExampleClick={setChatInput} />
+              ) : creationType === "vesting" ? (
+                <VestingCreationForm />
               ) : null}
             </Card>
           </div>
