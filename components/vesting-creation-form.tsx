@@ -201,6 +201,7 @@ export function VestingCreationForm() {
     
     // Update highlighted fields
     if (hasChanges) {
+      console.log('Updated fields:', Array.from(newUpdatedFields))
       setUpdatedFields(new Set(newUpdatedFields))
       
       // Clear highlights after 4 seconds
@@ -553,8 +554,10 @@ export function VestingCreationForm() {
                         max="100"
                         value={value.toString()}
                         onChange={(e) => onChange(Number(e.target.value))}
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30
-                          focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                        className={`bg-white/5 border-white/10 text-white placeholder:text-white/30
+                          focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 ${
+                          updatedFields.has("tgeReleasePercentage") ? 'highlight-update' : ''
+                        }`}
                         {...field}
                       />
                     </FormControl>
@@ -574,8 +577,10 @@ export function VestingCreationForm() {
                     <Input
                       placeholder="1000000"
                       {...field}
-                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30
-                        focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                      className={`bg-white/5 border-white/10 text-white placeholder:text-white/30
+                        focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 ${
+                        updatedFields.has("totalVestingAmount") ? 'highlight-update' : ''
+                      }`}
                     />
                   </FormControl>
                   <FormMessage className="text-red-400" />
@@ -610,8 +615,10 @@ export function VestingCreationForm() {
                             max="120"
                             value={value.toString()}
                             onChange={(e) => onChange(Number(e.target.value))}
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/30
-                              focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                            className={`bg-white/5 border-white/10 text-white placeholder:text-white/30
+                              focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 ${
+                              updatedFields.has("cliffMonths") ? 'highlight-update' : ''
+                            }`}
                             {...field}
                           />
                         </FormControl>
@@ -628,7 +635,9 @@ export function VestingCreationForm() {
                         <FormLabel className="text-white">Vesting Frequency</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                            <SelectTrigger className={`bg-white/5 border-white/10 text-white ${
+                              updatedFields.has("vestingType") ? 'highlight-update' : ''
+                            }`}>
                               <SelectValue placeholder="Select vesting type" />
                             </SelectTrigger>
                           </FormControl>
@@ -660,8 +669,10 @@ export function VestingCreationForm() {
                           max="120"
                           value={value.toString()}
                           onChange={(e) => onChange(Number(e.target.value))}
-                          className="bg-white/5 border-white/10 text-white placeholder:text-white/30
-                            focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300"
+                          className={`bg-white/5 border-white/10 text-white placeholder:text-white/30
+                            focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all duration-300 ${
+                            updatedFields.has("releaseMonthsCount") ? 'highlight-update' : ''
+                          }`}
                           {...field}
                         />
                       </FormControl>
