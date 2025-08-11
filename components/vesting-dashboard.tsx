@@ -32,7 +32,8 @@ import {
   Users,
   Upload,
   Download,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -42,6 +43,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
 
 interface VestingDashboardProps {
   contractAddress: string
@@ -67,6 +69,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
   // Admin state
   const [singleLockAddress, setSingleLockAddress] = React.useState('')
   const [singleLockAmount, setSingleLockAmount] = React.useState('')
+  const [depositAmount, setDepositAmount] = React.useState('')
   const [batchLockData, setBatchLockData] = React.useState('')
   const [showBatchConfirmation, setShowBatchConfirmation] = React.useState(false)
   const [pendingBatchData, setPendingBatchData] = React.useState<{addresses: Address[], amounts: bigint[], totalInWei: bigint}>({addresses: [], amounts: [], totalInWei: BigInt(0)})
@@ -155,7 +158,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     functionName: 'symbol',
   })
 
-  const { data: tokenBalance } = useReadContract({
+  const { data: tokenBalance, refetch: refetchTokenBalance } = useReadContract({
     address: tokenAddress as Address,
     abi: erc20ABI,
     functionName: 'balanceOf',
@@ -183,12 +186,22 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     error: lockMultipleError
   } = useWriteContract()
 
+  const {
+    writeContract: depositTokens,
+    data: depositHash,
+    isPending: isDepositPending
+  } = useWriteContract()
+
   const { isLoading: isLockToUserConfirming, isSuccess: isLockToUserSuccess } = useWaitForTransactionReceipt({
     hash: lockToUserHash,
   })
 
   const { isLoading: isLockMultipleConfirming, isSuccess: isLockMultipleSuccess } = useWaitForTransactionReceipt({
     hash: lockMultipleHash,
+  })
+
+  const { isLoading: isDepositConfirming, isSuccess: isDepositSuccess } = useWaitForTransactionReceipt({
+    hash: depositHash,
   })
 
   const { isLoading: isClaimConfirming, isSuccess: isClaimSuccess } = useWaitForTransactionReceipt({
@@ -298,6 +311,52 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     } catch (error) {
       console.error('Lock to user error:', error)
       toast.error('Failed to lock tokens: ' + (error as Error).message)
+    }
+  }
+
+  // Handle deposit tokens to vesting contract
+  const handleDepositTokens = () => {
+    // Validate amount
+    const amountValidation = validateAmount(depositAmount)
+    if (!amountValidation.valid) {
+      toast.error(amountValidation.error!)
+      return
+    }
+
+    if (!tokenDecimals) {
+      toast.error('Unable to fetch token decimals. Please try again.')
+      return
+    }
+
+    if (!tokenAddress) {
+      toast.error('Unable to fetch token address. Please try again.')
+      return
+    }
+
+    try {
+      const amountInWei = parseUnits(depositAmount, (tokenDecimals as number) || 18)
+      
+      // Use ERC20 transfer function to send tokens to vesting contract
+      depositTokens({
+        address: tokenAddress as Address,
+        abi: [
+          {
+            name: 'transfer',
+            type: 'function',
+            stateMutability: 'nonpayable',
+            inputs: [
+              { name: 'to', type: 'address' },
+              { name: 'amount', type: 'uint256' }
+            ],
+            outputs: [{ name: '', type: 'bool' }]
+          }
+        ],
+        functionName: 'transfer',
+        args: [contractAddress as Address, amountInWei],
+      })
+    } catch (error) {
+      console.error('Deposit tokens error:', error)
+      toast.error('Failed to deposit tokens: ' + (error as Error).message)
     }
   }
 
@@ -561,6 +620,14 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
       refetchUserInfo()
     }
   }, [isLockMultipleSuccess, refetchUserInfo])
+
+  React.useEffect(() => {
+    if (isDepositSuccess) {
+      toast.success('Tokens deposited successfully to vesting contract!')
+      setDepositAmount('')
+      refetchTokenBalance()
+    }
+  }, [isDepositSuccess, refetchTokenBalance])
 
   // Handle batch lock errors
   React.useEffect(() => {
@@ -1181,6 +1248,54 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                           You have owner privileges for this vesting contract. Use these tools to manage token allocations.
                         </AlertDescription>
                       </Alert>
+
+                      {/* Deposit Tokens */}
+                      <div className="space-y-4">
+                        <h3 className="text-white font-medium flex items-center gap-2">
+                          <Coins className="w-4 h-4 text-primary" />
+                          Deposit Tokens
+                        </h3>
+                        <p className="text-white/60 text-sm">
+                          Transfer tokens from your wallet to the vesting contract for distribution
+                        </p>
+                        <div className="flex gap-4">
+                          <div className="flex-1 space-y-2">
+                            <Label htmlFor="deposit-amount" className="text-white/70">Amount to Deposit</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                id="deposit-amount"
+                                placeholder="Enter amount"
+                                value={depositAmount}
+                                onChange={(e) => setDepositAmount(e.target.value)}
+                                className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                              />
+                              <div className="flex items-center px-3 bg-white/5 border border-white/10 rounded-md">
+                                <span className="text-white/70 text-sm whitespace-nowrap">
+                                  {(tokenSymbol as string) || 'Tokens'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={handleDepositTokens}
+                            disabled={!depositAmount || isDepositPending || isDepositConfirming}
+                            className="self-end"
+                          >
+                            {isDepositPending || isDepositConfirming ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              'Deposit Tokens'
+                            )}
+                          </Button>
+                        </div>
+                        {tokenBalance !== undefined && (
+                          <p className="text-white/60 text-xs">
+                            Contract Balance: {formatUnits(tokenBalance as bigint, (tokenDecimals as number) || 18)} {(tokenSymbol as string) || 'tokens'}
+                          </p>
+                        )}
+                      </div>
+
+                      <Separator className="bg-white/10" />
 
                       {/* Single User Lock */}
                       <div className="space-y-4">
