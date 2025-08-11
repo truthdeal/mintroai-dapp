@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient } from 'wagmi'
-import { formatUnits, type Address, parseAbiItem } from 'viem'
+import { formatUnits, parseUnits, type Address, parseAbiItem, isAddress, getAddress } from 'viem'
 import { type Chain, arbitrum, bscTestnet } from 'viem/chains'
 import vestingABI from '@/constants/vestingContractABI.json'
+import erc20ABI from '@/constants/erc20ABI.json'
 import { toast } from "sonner"
 import { motion } from "framer-motion"
 import { 
@@ -67,7 +68,8 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
   const [singleLockAddress, setSingleLockAddress] = React.useState('')
   const [singleLockAmount, setSingleLockAmount] = React.useState('')
   const [batchLockData, setBatchLockData] = React.useState('')
-  const [tokenDecimals, setTokenDecimals] = React.useState('18')
+  const [showBatchConfirmation, setShowBatchConfirmation] = React.useState(false)
+  const [pendingBatchData, setPendingBatchData] = React.useState<{addresses: Address[], amounts: bigint[]}>({addresses: [], amounts: []})
   
   // Contract read hooks
   const { data: vestingInfo, refetch: refetchVestingInfo } = useReadContract({
@@ -139,6 +141,26 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     functionName: 'maxTokensToLock',
   })
 
+  // Fetch token decimals from the token contract
+  const { data: tokenDecimals } = useReadContract({
+    address: tokenAddress as Address,
+    abi: erc20ABI,
+    functionName: 'decimals',
+  })
+
+  const { data: tokenSymbol } = useReadContract({
+    address: tokenAddress as Address,
+    abi: erc20ABI,
+    functionName: 'symbol',
+  })
+
+  const { data: tokenBalance } = useReadContract({
+    address: tokenAddress as Address,
+    abi: erc20ABI,
+    functionName: 'balanceOf',
+    args: contractAddress ? [contractAddress as Address] : undefined,
+  })
+
   // Claim function
   const { 
     writeContract: claimTokens,
@@ -185,71 +207,215 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     }
   }
 
+  // Validate Ethereum address
+  const validateAddress = (address: string): { valid: boolean; error?: string } => {
+    if (!address) {
+      return { valid: false, error: 'Address is required' }
+    }
+    if (!isAddress(address)) {
+      return { valid: false, error: 'Invalid Ethereum address format' }
+    }
+    try {
+      getAddress(address) // This will throw if checksum is invalid
+      return { valid: true }
+    } catch {
+      return { valid: false, error: 'Invalid address checksum' }
+    }
+  }
+
+  // Validate amount
+  const validateAmount = (amount: string): { valid: boolean; error?: string } => {
+    if (!amount) {
+      return { valid: false, error: 'Amount is required' }
+    }
+    const numAmount = parseFloat(amount)
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return { valid: false, error: 'Amount must be a positive number' }
+    }
+    if (amount.includes('e') || amount.includes('E')) {
+      return { valid: false, error: 'Scientific notation not allowed' }
+    }
+    return { valid: true }
+  }
+
+  // Calculate if new allocation would exceed max supply
+  const checkMaxSupply = (newAmount: bigint): { valid: boolean; error?: string } => {
+    if (!maxTokensToLock || !totalLocked) {
+      return { valid: true } // Can't check, proceed with caution
+    }
+    const maxSupply = maxTokensToLock as bigint
+    const currentLocked = totalLocked as bigint
+    const remaining = maxSupply - currentLocked
+    
+    if (newAmount > remaining) {
+      return { 
+        valid: false, 
+        error: `Exceeds remaining supply. Available: ${formatUnits(remaining, (tokenDecimals as number) || 18)} ${tokenSymbol || 'tokens'}` 
+      }
+    }
+    return { valid: true }
+  }
+
   // Handle single user lock
   const handleLockToUser = () => {
-    if (!singleLockAddress || !singleLockAmount) {
-      toast.error('Please enter both address and amount')
+    // Validate address
+    const addressValidation = validateAddress(singleLockAddress)
+    if (!addressValidation.valid) {
+      toast.error(addressValidation.error!)
+      return
+    }
+
+    // Validate amount
+    const amountValidation = validateAmount(singleLockAmount)
+    if (!amountValidation.valid) {
+      toast.error(amountValidation.error!)
+      return
+    }
+
+    if (!tokenDecimals) {
+      toast.error('Unable to fetch token decimals. Please try again.')
       return
     }
 
     try {
-      const amountInWei = BigInt(Math.floor(parseFloat(singleLockAmount) * 10 ** 18))
+      const checksumAddress = getAddress(singleLockAddress)
+      const amountInWei = parseUnits(singleLockAmount, (tokenDecimals as number) || 18)
+      
+      // Check max supply
+      const supplyCheck = checkMaxSupply(amountInWei)
+      if (!supplyCheck.valid) {
+        toast.error(supplyCheck.error!)
+        return
+      }
+
       lockToUser({
         address: contractAddress as Address,
         abi: vestingABI,
         functionName: 'lockToUser',
-        args: [singleLockAddress as Address, amountInWei],
+        args: [checksumAddress as Address, amountInWei],
       })
     } catch (error) {
       console.error('Lock to user error:', error)
-      toast.error('Failed to lock tokens')
+      toast.error('Failed to lock tokens: ' + (error as Error).message)
     }
   }
 
-  // Handle batch lock
-  const handleBatchLock = () => {
+  // Process batch data
+  const processBatchData = () => {
     if (!batchLockData.trim()) {
       toast.error('Please enter batch data')
       return
     }
 
+    if (!tokenDecimals) {
+      toast.error('Unable to fetch token decimals. Please try again.')
+      return
+    }
+
     try {
-      const lines = batchLockData.trim().split('\n')
+      const lines = batchLockData.trim().split('\n').filter(line => line.trim())
       const addresses: Address[] = []
       const amounts: bigint[] = []
+      const addressSet = new Set<string>()
+      let totalAmount = BigInt(0)
+      const errors: string[] = []
 
-      for (const line of lines) {
-        const [address, amount] = line.split(',').map(s => s.trim())
-        if (!address || !amount) {
-          toast.error(`Invalid data format: ${line}`)
-          return
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        const [addressStr, amountStr] = line.split(',').map(s => s.trim())
+        
+        if (!addressStr || !amountStr) {
+          errors.push(`Line ${i + 1}: Invalid format (expected: address,amount)`)
+          continue
         }
-        addresses.push(address as Address)
-        amounts.push(BigInt(amount))
+
+        // Validate address
+        const addressValidation = validateAddress(addressStr)
+        if (!addressValidation.valid) {
+          errors.push(`Line ${i + 1}: ${addressValidation.error}`)
+          continue
+        }
+
+        // Check for duplicates
+        const checksumAddress = getAddress(addressStr)
+        if (addressSet.has(checksumAddress.toLowerCase())) {
+          errors.push(`Line ${i + 1}: Duplicate address ${checksumAddress}`)
+          continue
+        }
+
+        // Validate amount
+        const amountValidation = validateAmount(amountStr)
+        if (!amountValidation.valid) {
+          errors.push(`Line ${i + 1}: ${amountValidation.error}`)
+          continue
+        }
+
+        addressSet.add(checksumAddress.toLowerCase())
+        addresses.push(checksumAddress as Address)
+        const amountInWei = parseUnits(amountStr, (tokenDecimals as number) || 18)
+        amounts.push(amountInWei)
+        totalAmount += amountInWei
       }
 
-      lockTokensMultiple({
-        address: contractAddress as Address,
-        abi: vestingABI,
-        functionName: 'lockTokensMultiple',
-        args: [addresses, amounts, BigInt(tokenDecimals)],
-      })
+      if (errors.length > 0) {
+        const errorMessage = errors.slice(0, 5).join('\n') + (errors.length > 5 ? `\n...and ${errors.length - 5} more` : '')
+        toast.error(errorMessage)
+        return
+      }
+
+      if (addresses.length === 0) {
+        toast.error('No valid entries found')
+        return
+      }
+
+      // Check total against max supply
+      const supplyCheck = checkMaxSupply(totalAmount)
+      if (!supplyCheck.valid) {
+        toast.error(supplyCheck.error!)
+        return
+      }
+
+      // Store data and show confirmation
+      setPendingBatchData({ addresses, amounts })
+      setShowBatchConfirmation(true)
     } catch (error) {
-      console.error('Batch lock error:', error)
-      toast.error('Failed to batch lock tokens')
+      console.error('Batch processing error:', error)
+      toast.error('Failed to process batch data: ' + (error as Error).message)
     }
+  }
+
+  // Execute batch lock after confirmation
+  const executeBatchLock = () => {
+    if (!tokenDecimals) {
+      toast.error('Unable to fetch token decimals')
+      return
+    }
+
+    lockTokensMultiple({
+      address: contractAddress as Address,
+      abi: vestingABI,
+      functionName: 'lockTokensMultiple',
+      args: [pendingBatchData.addresses, pendingBatchData.amounts, BigInt((tokenDecimals as number) || 18)],
+    })
+    setShowBatchConfirmation(false)
   }
 
   // Generate CSV template
   const downloadCSVTemplate = () => {
-    const template = 'address,amount\n0x123...,1000\n0x456...,2000\n0x789...,1500'
+    const template = `address,amount
+# Example entries - replace with actual addresses and amounts
+# Amounts should be in token units (not wei)
+0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb4,1000
+0x5aAeb6053f3E94C9b9A09f33669435E7Ef1BeAed,2500.5
+0x617F3e2b3a250b5Dd087231c8E7D6d72C4f8eF59,750`
     const blob = new Blob([template], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'vesting_template.csv'
+    a.download = 'vesting_allocation_template.csv'
     a.click()
     URL.revokeObjectURL(url)
+    toast.success('Template downloaded successfully')
   }
 
   // Handle CSV upload
@@ -257,16 +423,44 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     const file = event.target.files?.[0]
     if (!file) return
 
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      toast.error('File too large. Maximum size is 5MB')
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (e) => {
-      const text = e.target?.result as string
-      const lines = text.split('\n').filter(line => line.trim())
-      // Skip header if it exists
-      const dataLines = lines[0].toLowerCase().includes('address') ? lines.slice(1) : lines
-      setBatchLockData(dataLines.join('\n'))
-      toast.success('CSV file loaded successfully')
+      try {
+        const text = e.target?.result as string
+        const lines = text.split('\n')
+          .map(line => line.trim())
+          .filter(line => line && !line.startsWith('#')) // Remove empty lines and comments
+        
+        // Skip header if it exists
+        const dataLines = lines[0].toLowerCase().includes('address') ? lines.slice(1) : lines
+        
+        if (dataLines.length === 0) {
+          toast.error('No valid data found in CSV file')
+          return
+        }
+        
+        if (dataLines.length > 500) {
+          toast.warning('Large batch detected. Processing may take longer.')
+        }
+        
+        setBatchLockData(dataLines.join('\n'))
+        toast.success(`Loaded ${dataLines.length} entries from CSV`)
+      } catch {
+        toast.error('Failed to parse CSV file')
+      }
+    }
+    reader.onerror = () => {
+      toast.error('Failed to read file')
     }
     reader.readAsText(file)
+    
+    // Reset file input
+    event.target.value = ''
   }
 
   // Fetch claim history
@@ -1015,16 +1209,6 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                         
                         <div className="space-y-4">
                           <div className="flex gap-4 items-end">
-                            <div className="flex-1 space-y-2">
-                              <Label htmlFor="decimals" className="text-white/70">Token Decimals</Label>
-                              <Input
-                                id="decimals"
-                                type="number"
-                                value={tokenDecimals}
-                                onChange={(e) => setTokenDecimals(e.target.value)}
-                                className="bg-white/5 border-white/10 text-white"
-                              />
-                            </div>
                             <Button
                               variant="outline"
                               onClick={downloadCSVTemplate}
@@ -1067,13 +1251,13 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                               className="bg-white/5 border-white/10 text-white placeholder:text-white/30 font-mono text-sm"
                             />
                             <p className="text-white/50 text-sm">
-                              Enter one allocation per line: address,amount (without decimals)
+                              Enter one allocation per line: address,amount (in {(tokenSymbol as string) || 'tokens'}, not wei)
                             </p>
                           </div>
 
                           <Button
-                            onClick={handleBatchLock}
-                            disabled={isLockMultiplePending || isLockMultipleConfirming}
+                            onClick={processBatchData}
+                            disabled={isLockMultiplePending || isLockMultipleConfirming || !batchLockData.trim()}
                             className="bg-primary hover:bg-primary/90 text-white"
                           >
                             {isLockMultiplePending || isLockMultipleConfirming ? (
@@ -1094,21 +1278,82 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                       {/* Contract Stats for Admin */}
                       <div className="border-t border-white/10 pt-6">
                         <h3 className="text-white font-medium mb-4">Contract Statistics</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="p-3 bg-white/5 rounded-lg">
                             <p className="text-white/70 text-sm mb-1">Total Locked</p>
                             <p className="text-white font-medium">
-                              {totalLocked ? formatUnits(totalLocked as bigint, 18) : '0'} tokens
+                              {totalLocked ? formatUnits(totalLocked as bigint, (tokenDecimals as number) || 18) : '0'} {(tokenSymbol as string) || 'tokens'}
                             </p>
                           </div>
                           <div className="p-3 bg-white/5 rounded-lg">
                             <p className="text-white/70 text-sm mb-1">Max Supply</p>
                             <p className="text-white font-medium">
-                              {maxTokensToLock ? formatUnits(maxTokensToLock as bigint, 18) : '0'} tokens
+                              {maxTokensToLock ? formatUnits(maxTokensToLock as bigint, (tokenDecimals as number) || 18) : '0'} {(tokenSymbol as string) || 'tokens'}
+                            </p>
+                          </div>
+                          <div className="p-3 bg-white/5 rounded-lg">
+                            <p className="text-white/70 text-sm mb-1">Available to Lock</p>
+                            <p className="text-white font-medium">
+                              {maxTokensToLock && totalLocked 
+                                ? formatUnits((maxTokensToLock as bigint) - (totalLocked as bigint), (tokenDecimals as number) || 18) 
+                                : '0'} {(tokenSymbol as string) || 'tokens'}
                             </p>
                           </div>
                         </div>
+                        {tokenBalance ? (
+                          <div className="mt-4 p-3 bg-white/5 rounded-lg">
+                            <p className="text-white/70 text-sm mb-1">Contract Token Balance</p>
+                            <p className="text-white font-medium">
+                              {formatUnits(tokenBalance as bigint, (tokenDecimals as number) || 18)} {(tokenSymbol as string) || 'tokens'}
+                            </p>
+                            {(tokenBalance as bigint) < ((maxTokensToLock as bigint) || BigInt(0)) && (
+                              <p className="text-yellow-400 text-xs mt-1">
+                                ⚠️ Contract balance is less than max supply. Ensure sufficient tokens are transferred.
+                              </p>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
+
+                      {/* Batch Confirmation Dialog */}
+                      {showBatchConfirmation && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                          <div className="bg-black/90 border border-white/10 rounded-lg p-6 max-w-md w-full mx-4">
+                            <h3 className="text-white font-bold text-lg mb-4">Confirm Batch Lock</h3>
+                            <div className="space-y-3 mb-6">
+                              <div className="p-3 bg-white/5 rounded">
+                                <p className="text-white/70 text-sm">Number of Recipients</p>
+                                <p className="text-white font-medium">{pendingBatchData.addresses.length}</p>
+                              </div>
+                              <div className="p-3 bg-white/5 rounded">
+                                <p className="text-white/70 text-sm">Total Amount</p>
+                                <p className="text-white font-medium">
+                                  {formatUnits(
+                                    pendingBatchData.amounts.reduce((a, b) => a + b, BigInt(0)), 
+                                    (tokenDecimals as number) || 18
+                                  )} {(tokenSymbol as string) || 'tokens'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-3">
+                              <Button
+                                onClick={executeBatchLock}
+                                disabled={isLockMultiplePending || isLockMultipleConfirming}
+                                className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                              >
+                                {isLockMultiplePending || isLockMultipleConfirming ? 'Processing...' : 'Confirm'}
+                              </Button>
+                              <Button
+                                onClick={() => setShowBatchConfirmation(false)}
+                                variant="outline"
+                                className="flex-1 border-white/10 text-white hover:bg-white/10"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
