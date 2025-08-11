@@ -9,6 +9,7 @@ import { ExternalLink, Copy, Calendar, Users, Clock } from 'lucide-react'
 import { VestingFormValues } from "./vesting-creation-form"
 import { format } from "date-fns"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 interface VestingSuccessDialogProps {
   isOpen: boolean
@@ -21,13 +22,13 @@ interface VestingSuccessDialogProps {
 
 export function VestingSuccessDialog({
   isOpen,
-  onClose,
   onCreateAnother,
   contractAddress,
   transactionHash,
   formData
 }: VestingSuccessDialogProps) {
   const chainId = useChainId()
+  const router = useRouter()
 
   // Get block explorer URL based on chain
   const getExplorerUrl = (type: 'address' | 'tx', hash: string) => {
@@ -72,6 +73,10 @@ export function VestingSuccessDialog({
     const utcHours = utcDate.getUTCHours().toString().padStart(2, '0')
     const utcMinutes = utcDate.getUTCMinutes().toString().padStart(2, '0')
     return `${formattedDate} ${utcHours}:${utcMinutes} UTC`
+  }
+
+  const handleGoToDashboard = () => {
+    router.push(`/vesting-dashboard?address=${contractAddress}`)
   }
 
   return (
@@ -216,10 +221,10 @@ export function VestingSuccessDialog({
               Create Another Vesting
             </Button>
             <Button
-              onClick={onClose}
+              onClick={handleGoToDashboard}
               className="flex-1 bg-primary hover:bg-primary/90 text-white"
             >
-              Close
+              Go to Dashboard
             </Button>
           </AlertDialogFooter>
         </motion.div>
