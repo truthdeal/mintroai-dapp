@@ -1,7 +1,6 @@
 import * as React from "react"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 import confetti from 'canvas-confetti'
 import { useChainId } from 'wagmi'
@@ -45,7 +44,6 @@ export function VestingSuccessDialog({
   }
 
   const contractExplorerUrl = getExplorerUrl('address', contractAddress)
-  const transactionExplorerUrl = getExplorerUrl('tx', transactionHash)
 
   // Confetti animation on dialog open
   React.useEffect(() => {
@@ -62,7 +60,8 @@ export function VestingSuccessDialog({
     try {
       await navigator.clipboard.writeText(text)
       toast.success(`${type} copied to clipboard!`)
-    } catch (err) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_) {
       toast.error(`Failed to copy ${type.toLowerCase()}`)
     }
   }
