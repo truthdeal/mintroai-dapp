@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi'
-import { formatUnits, type Address } from 'viem'
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient } from 'wagmi'
+import { formatUnits, type Address, parseAbiItem } from 'viem'
 import { type Chain, arbitrum, bscTestnet } from 'viem/chains'
 import vestingABI from '@/constants/vestingContractABI.json'
 import { toast } from "sonner"
@@ -36,10 +36,22 @@ interface VestingDashboardProps {
   contractAddress: string
 }
 
+interface ClaimHistoryItem {
+  transactionHash: string
+  timestamp: number
+  claimedAmount: string
+  totalClaimed: string
+  totalAmount: string
+  blockNumber: bigint
+}
+
 export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
+  const publicClient = usePublicClient()
   const [copiedAddress, setCopiedAddress] = React.useState(false)
+  const [claimHistory, setClaimHistory] = React.useState<ClaimHistoryItem[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = React.useState(false)
   
   // Contract read hooks
   const { data: vestingInfo, refetch: refetchVestingInfo } = useReadContract({
@@ -99,6 +111,12 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     functionName: 'totalLocked',
   })
 
+  const { data: period } = useReadContract({
+    address: contractAddress as Address,
+    abi: vestingABI,
+    functionName: 'period',
+  })
+
   // Claim function
   const { 
     writeContract: claimTokens,
@@ -124,6 +142,56 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     }
   }
 
+  // Fetch claim history
+  const fetchClaimHistory = React.useCallback(async () => {
+    if (!publicClient || !address) return
+    
+    setIsLoadingHistory(true)
+    try {
+      const logs = await publicClient.getLogs({
+        address: contractAddress as Address,
+        event: parseAbiItem('event Claimed(address indexed user, uint256 timestamp, uint256 claimedAmount, uint256 totalClaimed, uint256 totalAmount)'),
+        args: {
+          user: address,
+        },
+        fromBlock: 'earliest',
+        toBlock: 'latest',
+      })
+
+      const history = logs.map((log) => {
+        const args = log.args as {
+          user?: Address
+          timestamp?: bigint
+          claimedAmount?: bigint
+          totalClaimed?: bigint
+          totalAmount?: bigint
+        }
+        return {
+          transactionHash: log.transactionHash,
+          timestamp: Number(args.timestamp || 0),
+          claimedAmount: formatUnits(args.claimedAmount || BigInt(0), 18),
+          totalClaimed: formatUnits(args.totalClaimed || BigInt(0), 18),
+          totalAmount: formatUnits(args.totalAmount || BigInt(0), 18),
+          blockNumber: log.blockNumber,
+        }
+      }).reverse() // Most recent first
+
+      setClaimHistory(history)
+    } catch (error) {
+      console.error('Error fetching claim history:', error)
+      toast.error('Failed to fetch claim history')
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }, [publicClient, address, contractAddress])
+
+  // Fetch claim history on mount and when address changes
+  React.useEffect(() => {
+    if (address && publicClient) {
+      fetchClaimHistory()
+    }
+  }, [address, publicClient, fetchClaimHistory])
+
   // Refetch data after successful claim
   React.useEffect(() => {
     if (isClaimSuccess) {
@@ -131,8 +199,9 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
       refetchVestingInfo()
       refetchClaimable()
       refetchUserInfo()
+      fetchClaimHistory() // Refresh claim history
     }
-  }, [isClaimSuccess, refetchVestingInfo, refetchClaimable, refetchUserInfo])
+  }, [isClaimSuccess, refetchVestingInfo, refetchClaimable, refetchUserInfo, fetchClaimHistory])
 
   // Get block explorer URL
   const getExplorerUrl = (type: 'address' | 'tx', hash: string) => {
@@ -455,7 +524,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                             Release Rate
                           </span>
                           <span className="text-white font-medium">
-                            {releaseRate ? `${(Number(releaseRate) / 21600000000).toFixed(4)}% per period` : '0%'}
+                            {releaseRate ? `${Number(releaseRate) / 100}% per period` : '0%'}
                           </span>
                         </div>
                       </div>
@@ -511,7 +580,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                             <div>
                               <p className="text-white font-medium">TGE</p>
                               <p className="text-white/50 text-sm">
-                                {tgeRate ? `${Number(tgeRate) / 100}% released` : '0% released'}
+                                {tgeRate && tgeTimestamp && Date.now() / 1000 > Number(tgeTimestamp) ? `${Number(tgeRate) / 100}% released` : 'Pending'}
                               </p>
                             </div>
                           </div>
@@ -528,14 +597,24 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                             </div>
                           )}
 
-                          {vestingProgress < 100 && (
+                          {vestingProgress >= 100 ? (
+                            <div className="flex items-center gap-4">
+                              <div className="w-8 h-8 rounded-full bg-green-500/20 border-2 border-green-500 flex items-center justify-center">
+                                <Unlock className="w-4 h-4 text-green-500" />
+                              </div>
+                              <div>
+                                <p className="text-white font-medium">Fully Vested</p>
+                                <p className="text-white/50 text-sm">100% unlocked</p>
+                              </div>
+                            </div>
+                          ) : (
                             <div className="flex items-center gap-4">
                               <div className="w-8 h-8 rounded-full bg-white/10 border-2 border-white/30 flex items-center justify-center">
                                 <Lock className="w-4 h-4 text-white/50" />
                               </div>
                               <div>
                                 <p className="text-white font-medium">Fully Vested</p>
-                                <p className="text-white/50 text-sm">100% unlocked</p>
+                                <p className="text-white/50 text-sm">Pending completion</p>
                               </div>
                             </div>
                           )}
@@ -616,6 +695,13 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                           {userTotalAmount > BigInt(0) ? formatUnits(userTotalAmount, 18) : '0'}
                         </span>
                       </div>
+
+                      <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                        <span className="text-white/70">Vesting Period</span>
+                        <span className="text-white font-medium">
+                          {period ? `${Number(period) / 86400} days` : 'Not set'}
+                        </span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -630,13 +716,76 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center py-8">
-                      <Clock className="w-12 h-12 mx-auto mb-4 text-white/30" />
-                      <p className="text-white/70">Claim history will appear here</p>
-                      <p className="text-white/50 text-sm mt-2">
-                        Track your past claims and transactions
-                      </p>
-                    </div>
+                    {isLoadingHistory ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-white/70">Loading claim history...</p>
+                      </div>
+                    ) : claimHistory.length > 0 ? (
+                      <div className="space-y-3">
+                        {claimHistory.map((claim) => (
+                          <div key={claim.transactionHash} className="p-4 bg-white/5 rounded-lg border border-white/10">
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <p className="text-white font-medium mb-1">
+                                  Claimed {claim.claimedAmount} tokens
+                                </p>
+                                <p className="text-white/50 text-sm">
+                                  {formatDate(claim.timestamp)}
+                                </p>
+                              </div>
+                              <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
+                                Successful
+                              </Badge>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-white/70">Total Claimed After</span>
+                                <span className="text-white">{claim.totalClaimed}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-white/70">Progress</span>
+                                <span className="text-white">
+                                  {((parseFloat(claim.totalClaimed) / parseFloat(claim.totalAmount)) * 100).toFixed(1)}%
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-white/70">Transaction</span>
+                                <div className="flex items-center gap-1">
+                                  <code className="text-primary text-xs">
+                                    {claim.transactionHash.slice(0, 6)}...{claim.transactionHash.slice(-4)}
+                                  </code>
+                                  {getExplorerUrl('tx', claim.transactionHash) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      asChild
+                                      className="p-0.5 h-auto text-white/70 hover:text-white"
+                                    >
+                                      <a href={getExplorerUrl('tx', claim.transactionHash)!} target="_blank" rel="noopener noreferrer">
+                                        <ExternalLink className="w-3 h-3" />
+                                      </a>
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-white/70">Block</span>
+                                <span className="text-white/50">#{claim.blockNumber.toString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Clock className="w-12 h-12 mx-auto mb-4 text-white/30" />
+                        <p className="text-white/70">No claim history yet</p>
+                        <p className="text-white/50 text-sm mt-2">
+                          Your claims will appear here after you claim tokens
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
