@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { VestingConfirmationDialog } from "./vesting-confirmation-dialog"
+import { VestingSuccessDialog } from "./vesting-success-dialog"
 import { useSession } from "@/hooks/useSession"
 import { useAccount } from 'wagmi'
 import { useTokenDeploy } from '@/hooks/useTokenDeploy'
@@ -49,8 +50,10 @@ export function VestingCreationForm() {
   const { deploy, isPending, isWaiting, isSuccess, error, hash, receipt } = useTokenDeploy()
   
   const [showConfirmation, setShowConfirmation] = React.useState(false)
+  const [showSuccess, setShowSuccess] = React.useState(false)
   const [deploymentStatus, setDeploymentStatus] = React.useState<'idle' | 'creating' | 'compiling' | 'deploying' | 'success' | 'error'>('idle')
   const [formData, setFormData] = React.useState<VestingFormValues | null>(null)
+  const [deployedAddress, setDeployedAddress] = React.useState<string>('')
   const [updatedFields, setUpdatedFields] = React.useState<Set<string>>(new Set())
 
   const form = useForm<VestingFormValues>({
@@ -220,20 +223,20 @@ export function VestingCreationForm() {
     } else if (isSuccess && receipt) {
       setDeploymentStatus('success')
       const deployedAddr = receipt.logs[0].address
+      setDeployedAddress(deployedAddr)
       console.log('Transaction hash:', hash)
       console.log('Deployed vesting contract address:', deployedAddr)
       
-      // Reset form after successful creation
+      // Close confirmation dialog and show success dialog
       setTimeout(() => {
         setShowConfirmation(false)
         setDeploymentStatus('idle')
-        setFormData(null)
-        form.reset()
-      }, 2000)
+        setShowSuccess(true)
+      }, 1000)
     } else if (error) {
       setDeploymentStatus('error')
     }
-  }, [isPending, isWaiting, isSuccess, error, hash, receipt, form])
+  }, [isPending, isWaiting, isSuccess, error, hash, receipt])
 
   const onSubmit = async (values: VestingFormValues) => {
     if (!address) {
@@ -328,18 +331,32 @@ export function VestingCreationForm() {
     setFormData(null)
   }
 
+  const handleSuccessClose = () => {
+    setShowSuccess(false)
+    setDeployedAddress('')
+    setFormData(null)
+  }
+
+  const handleCreateAnother = () => {
+    setShowSuccess(false)
+    setDeployedAddress('')
+    setFormData(null)
+    form.reset()
+  }
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-8">
-        <div className="space-y-6">
-          <div className="flex items-center">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <CalendarIcon className="w-6 h-6 text-primary" />
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-8">
+          <div className="space-y-6">
+            <div className="flex items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <CalendarIcon className="w-6 h-6 text-primary" />
+                </div>
+                <h2 className="text-xl font-semibold text-white">Vesting Schedule</h2>
               </div>
-              <h2 className="text-xl font-semibold text-white">Vesting Schedule</h2>
             </div>
-          </div>
 
           {/* Basic Information */}
           <motion.div
@@ -770,22 +787,23 @@ export function VestingCreationForm() {
             </AccordionItem>
           </Accordion>
 
-          <div className="pt-6">
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-white font-semibold
-                transition-all duration-300 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]
-                relative overflow-hidden group"
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                Create Vesting Contract
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/10 to-primary/0 
-                translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-            </Button>
+            <div className="pt-6">
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold
+                  transition-all duration-300 hover:shadow-[0_0_20px_rgba(124,58,237,0.3)]
+                  relative overflow-hidden group"
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  Create Vesting Contract
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-white/10 to-primary/0 
+                  translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+              </Button>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </Form>
 
       <VestingConfirmationDialog
         isOpen={showConfirmation}
@@ -794,6 +812,17 @@ export function VestingCreationForm() {
         formData={formData || {} as VestingFormValues}
         deploymentStatus={deploymentStatus}
       />
-    </Form>
+
+      {deployedAddress && formData && (
+        <VestingSuccessDialog
+          isOpen={showSuccess}
+          onClose={handleSuccessClose}
+          onCreateAnother={handleCreateAnother}
+          contractAddress={deployedAddress}
+          transactionHash={hash || ''}
+          formData={formData}
+        />
+      )}
+    </>
   )
 } 
