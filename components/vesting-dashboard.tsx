@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient } from 'wagmi'
-import { formatUnits, parseUnits, type Address, parseAbiItem, isAddress } from 'viem'
+import { formatUnits, parseUnits, type Address, parseAbiItem, getAddress } from 'viem'
 import { type Chain, arbitrum, bscTestnet } from 'viem/chains'
 import vestingABI from '@/constants/vestingContractABI.json'
 import erc20ABI from '@/constants/erc20ABI.json'
@@ -70,6 +70,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
   const [batchLockData, setBatchLockData] = React.useState('')
   const [showBatchConfirmation, setShowBatchConfirmation] = React.useState(false)
   const [pendingBatchData, setPendingBatchData] = React.useState<{addresses: Address[], amounts: bigint[], totalInWei: bigint}>({addresses: [], amounts: [], totalInWei: BigInt(0)})
+  const [batchErrors, setBatchErrors] = React.useState<string[]>([])
   
   // Contract read hooks
   const { data: vestingInfo, refetch: refetchVestingInfo } = useReadContract({
@@ -178,7 +179,8 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
   const { 
     writeContract: lockTokensMultiple,
     data: lockMultipleHash,
-    isPending: isLockMultiplePending
+    isPending: isLockMultiplePending,
+    error: lockMultipleError
   } = useWriteContract()
 
   const { isLoading: isLockToUserConfirming, isSuccess: isLockToUserSuccess } = useWaitForTransactionReceipt({
@@ -212,7 +214,10 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     if (!address) {
       return { valid: false, error: 'Address is required' }
     }
-    if (!isAddress(address)) {
+    // Check if it's a valid Ethereum address (42 characters including 0x)
+    // and contains only hex characters
+    const addressRegex = /^0x[a-fA-F0-9]{40}$/
+    if (!addressRegex.test(address)) {
       return { valid: false, error: 'Invalid Ethereum address format' }
     }
     return { valid: true }
@@ -273,6 +278,8 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     }
 
     try {
+      // Convert to checksum address
+      const checksumAddress = getAddress(singleLockAddress) as Address
       const amountInWei = parseUnits(singleLockAmount, (tokenDecimals as number) || 18)
       
       // Check max supply
@@ -286,7 +293,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
         address: contractAddress as Address,
         abi: vestingABI,
         functionName: 'lockToUser',
-        args: [singleLockAddress as Address, amountInWei],
+        args: [checksumAddress, amountInWei],
       })
     } catch (error) {
       console.error('Lock to user error:', error)
@@ -296,13 +303,16 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
 
   // Process batch data
   const processBatchData = () => {
+    // Clear previous errors
+    setBatchErrors([])
+    
     if (!batchLockData.trim()) {
-      toast.error('Please enter batch data')
+      setBatchErrors(['Please enter batch data'])
       return
     }
 
     if (!tokenDecimals) {
-      toast.error('Unable to fetch token decimals. Please try again.')
+      setBatchErrors(['Unable to fetch token decimals. Please try again.'])
       return
     }
 
@@ -330,10 +340,19 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
           continue
         }
 
+        // Convert to checksum address
+        let checksumAddress: Address
+        try {
+          checksumAddress = getAddress(addressStr) as Address
+        } catch {
+          errors.push(`Line ${i + 1}: Invalid address ${addressStr}`)
+          continue
+        }
+
         // Check for duplicates (using lowercase for comparison)
-        const normalizedAddress = addressStr.toLowerCase()
+        const normalizedAddress = checksumAddress.toLowerCase()
         if (addressSet.has(normalizedAddress)) {
-          errors.push(`Line ${i + 1}: Duplicate address ${addressStr}`)
+          errors.push(`Line ${i + 1}: Duplicate address ${checksumAddress}`)
           continue
         }
 
@@ -345,48 +364,58 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
         }
 
         addressSet.add(normalizedAddress)
-        addresses.push(addressStr as Address)
+        addresses.push(checksumAddress)
         const amountInWei = parseUnits(amountStr, (tokenDecimals as number) || 18)
         amounts.push(amountInWei)
         totalAmount += amountInWei
       }
 
       if (errors.length > 0) {
-        const errorMessage = errors.slice(0, 5).join('\n') + (errors.length > 5 ? `\n...and ${errors.length - 5} more` : '')
-        toast.error(errorMessage)
+        setBatchErrors(errors)
         return
       }
 
       if (addresses.length === 0) {
-        toast.error('No valid entries found')
+        setBatchErrors(['No valid entries found'])
         return
       }
 
       // Check total against max supply
       const supplyCheck = checkMaxSupply(totalAmount)
       if (!supplyCheck.valid) {
-        toast.error(supplyCheck.error!)
+        setBatchErrors([supplyCheck.error!])
         return
       }
 
-      // Store data and show confirmation
+      // Clear errors and show confirmation
+      setBatchErrors([])
       setPendingBatchData({ addresses, amounts, totalInWei: totalAmount })
       setShowBatchConfirmation(true)
     } catch (error) {
       console.error('Batch processing error:', error)
-      toast.error('Failed to process batch data: ' + (error as Error).message)
+      setBatchErrors(['Failed to process batch data: ' + (error as Error).message])
     }
   }
 
   // Execute batch lock after confirmation
   const executeBatchLock = () => {
-    lockTokensMultiple({
-      address: contractAddress as Address,
-      abi: vestingABI,
-      functionName: 'lockTokensMultiple',
-      args: [pendingBatchData.addresses, pendingBatchData.amounts],
-    })
-    setShowBatchConfirmation(false)
+    console.log('Executing batch lock...')
+    console.log('Contract address:', contractAddress)
+    console.log('Addresses:', pendingBatchData.addresses)
+    console.log('Amounts:', pendingBatchData.amounts)
+    
+    try {
+      lockTokensMultiple({
+        address: contractAddress as Address,
+        abi: vestingABI,
+        functionName: 'lockTokensMultiple',
+        args: [pendingBatchData.addresses, pendingBatchData.amounts],
+      })
+      setShowBatchConfirmation(false)
+    } catch (error) {
+      console.error('Error executing batch lock:', error)
+      toast.error('Failed to execute batch lock: ' + (error as Error).message)
+    }
   }
 
   // Generate CSV template
@@ -527,9 +556,20 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     if (isLockMultipleSuccess) {
       toast.success('Batch token lock successful!')
       setBatchLockData('')
+      setBatchErrors([])
+      setShowBatchConfirmation(false)
       refetchUserInfo()
     }
   }, [isLockMultipleSuccess, refetchUserInfo])
+
+  // Handle batch lock errors
+  React.useEffect(() => {
+    if (lockMultipleError) {
+      console.error('Batch lock error:', lockMultipleError)
+      toast.error('Transaction failed: ' + (lockMultipleError as Error).message)
+      setBatchErrors(['Transaction failed. Please check the console for details.'])
+    }
+  }, [lockMultipleError])
 
   // Get block explorer URL
   const getExplorerUrl = (type: 'address' | 'tx', hash: string) => {
@@ -1235,13 +1275,29 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
 0x456...,2000
 0x789...,1500"
                               value={batchLockData}
-                              onChange={(e) => setBatchLockData(e.target.value)}
+                              onChange={(e) => {
+                                setBatchLockData(e.target.value)
+                                setBatchErrors([]) // Clear errors when user types
+                              }}
                               rows={6}
                               className="bg-white/5 border-white/10 text-white placeholder:text-white/30 font-mono text-sm"
                             />
                             <p className="text-white/50 text-sm">
                               Enter one allocation per line: address,amount (in {(tokenSymbol as string) || 'tokens'}, not wei)
                             </p>
+                            {batchErrors.length > 0 && (
+                              <div className="mt-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                <p className="text-red-400 text-sm font-medium mb-1">Validation Errors:</p>
+                                <ul className="list-disc list-inside text-red-300 text-xs space-y-1">
+                                  {batchErrors.slice(0, 5).map((error, i) => (
+                                    <li key={i}>{error}</li>
+                                  ))}
+                                  {batchErrors.length > 5 && (
+                                    <li>...and {batchErrors.length - 5} more errors</li>
+                                  )}
+                                </ul>
+                              </div>
+                            )}
                           </div>
 
                           <Button
