@@ -490,9 +490,9 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
         return {
           transactionHash: log.transactionHash,
           timestamp: Number(args.timestamp || 0),
-          claimedAmount: formatUnits(args.claimedAmount || BigInt(0), 18),
-          totalClaimed: formatUnits(args.totalClaimed || BigInt(0), 18),
-          totalAmount: formatUnits(args.totalAmount || BigInt(0), 18),
+          claimedAmount: formatUnits(args.claimedAmount || BigInt(0), (tokenDecimals as number) || 18),
+          totalClaimed: formatUnits(args.totalClaimed || BigInt(0), (tokenDecimals as number) || 18),
+          totalAmount: formatUnits(args.totalAmount || BigInt(0), (tokenDecimals as number) || 18),
           blockNumber: log.blockNumber,
         }
       }).reverse() // Most recent first
@@ -504,7 +504,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     } finally {
       setIsLoadingHistory(false)
     }
-  }, [publicClient, address, contractAddress])
+  }, [publicClient, address, contractAddress, tokenDecimals])
 
   // Fetch claim history on mount and when address changes
   React.useEffect(() => {
@@ -694,7 +694,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-white">
-                    {userTotalAmount > BigInt(0) ? formatUnits(userTotalAmount, 18) : '0'}
+                    {userTotalAmount > BigInt(0) ? formatUnits(userTotalAmount, (tokenDecimals as number) || 18) : '0'}
                   </div>
                 </CardContent>
               </Card>
@@ -714,7 +714,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-white">
-                    {userTotalClaimed > BigInt(0) ? formatUnits(userTotalClaimed, 18) : '0'}
+                    {userTotalClaimed > BigInt(0) ? formatUnits(userTotalClaimed, (tokenDecimals as number) || 18) : '0'}
                   </div>
                 </CardContent>
               </Card>
@@ -734,7 +734,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-primary">
-                    {claimableNow > BigInt(0) ? formatUnits(claimableNow, 18) : '0'}
+                    {claimableNow > BigInt(0) ? formatUnits(claimableNow, (tokenDecimals as number) || 18) : '0'}
                   </div>
                 </CardContent>
               </Card>
@@ -780,7 +780,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-3xl font-bold text-primary mb-2">
-                        {formatUnits(claimableNow, 18)}
+                        {formatUnits(claimableNow, (tokenDecimals as number) || 18)}
                       </p>
                       <p className="text-white/70">Tokens are ready to be claimed</p>
                     </div>
@@ -902,7 +902,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                           </span>
                           <span className="text-white font-medium">
                             {nextTotalVestingAmount > BigInt(0) 
-                              ? formatUnits(nextTotalVestingAmount - claimedSoFar, 18)
+                              ? formatUnits(nextTotalVestingAmount - claimedSoFar, (tokenDecimals as number) || 18)
                               : '0'}
                           </span>
                         </div>
@@ -1030,14 +1030,14 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                       <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
                         <span className="text-white/70">Total Locked</span>
                         <span className="text-white font-medium">
-                          {totalLocked ? formatUnits(totalLocked as bigint, 18) : '0'}
+                          {totalLocked ? formatUnits(totalLocked as bigint, (tokenDecimals as number) || 18) : '0'}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
                         <span className="text-white/70">Your Allocation</span>
                         <span className="text-white font-medium">
-                          {userTotalAmount > BigInt(0) ? formatUnits(userTotalAmount, 18) : '0'}
+                          {userTotalAmount > BigInt(0) ? formatUnits(userTotalAmount, (tokenDecimals as number) || 18) : '0'}
                         </span>
                       </div>
 
