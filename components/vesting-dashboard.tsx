@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient } from 'wagmi'
-import { formatUnits, parseUnits, type Address, parseAbiItem, isAddress, getAddress } from 'viem'
+import { formatUnits, parseUnits, type Address, parseAbiItem, isAddress } from 'viem'
 import { type Chain, arbitrum, bscTestnet } from 'viem/chains'
 import vestingABI from '@/constants/vestingContractABI.json'
 import erc20ABI from '@/constants/erc20ABI.json'
@@ -215,12 +215,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     if (!isAddress(address)) {
       return { valid: false, error: 'Invalid Ethereum address format' }
     }
-    try {
-      getAddress(address) // This will throw if checksum is invalid
-      return { valid: true }
-    } catch {
-      return { valid: false, error: 'Invalid address checksum' }
-    }
+    return { valid: true }
   }
 
   // Validate amount
@@ -278,7 +273,6 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     }
 
     try {
-      const checksumAddress = getAddress(singleLockAddress)
       const amountInWei = parseUnits(singleLockAmount, (tokenDecimals as number) || 18)
       
       // Check max supply
@@ -292,7 +286,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
         address: contractAddress as Address,
         abi: vestingABI,
         functionName: 'lockToUser',
-        args: [checksumAddress as Address, amountInWei],
+        args: [singleLockAddress as Address, amountInWei],
       })
     } catch (error) {
       console.error('Lock to user error:', error)
@@ -336,10 +330,10 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
           continue
         }
 
-        // Check for duplicates
-        const checksumAddress = getAddress(addressStr)
-        if (addressSet.has(checksumAddress.toLowerCase())) {
-          errors.push(`Line ${i + 1}: Duplicate address ${checksumAddress}`)
+        // Check for duplicates (using lowercase for comparison)
+        const normalizedAddress = addressStr.toLowerCase()
+        if (addressSet.has(normalizedAddress)) {
+          errors.push(`Line ${i + 1}: Duplicate address ${addressStr}`)
           continue
         }
 
@@ -350,8 +344,8 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
           continue
         }
 
-        addressSet.add(checksumAddress.toLowerCase())
-        addresses.push(checksumAddress as Address)
+        addressSet.add(normalizedAddress)
+        addresses.push(addressStr as Address)
         const amountInWei = parseUnits(amountStr, (tokenDecimals as number) || 18)
         amounts.push(amountInWei)
         totalAmount += amountInWei
