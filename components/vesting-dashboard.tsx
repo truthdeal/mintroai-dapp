@@ -455,7 +455,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                             Release Rate
                           </span>
                           <span className="text-white font-medium">
-                            {releaseRate ? `${Number(releaseRate) / 100}% per period` : '0%'}
+                            {releaseRate ? `${(Number(releaseRate) / 21600000000).toFixed(4)}% per period` : '0%'}
                           </span>
                         </div>
                       </div>
