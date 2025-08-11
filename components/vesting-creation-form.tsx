@@ -275,6 +275,7 @@ export function VestingCreationForm() {
         period: formData.vestingType === 'daily' ? 1 : 30, // 1 day or 30 days
         vestingSupply: parseInt(formData.totalVestingAmount),
         decimals: formData.tokenDecimals,
+        ownerAddress: address, // Add owner address for vesting contract
         users,
         amts,
       };
