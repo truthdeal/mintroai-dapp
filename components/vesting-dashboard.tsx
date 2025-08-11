@@ -25,12 +25,22 @@ import {
   ArrowRight,
   Timer,
   Lock,
-  Unlock
+  Unlock,
+  Shield,
+  UserPlus,
+  Users,
+  Upload,
+  Download,
+  AlertCircle
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { CustomConnectButton } from "@/components/custom-connect-button"
 import { format } from "date-fns"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface VestingDashboardProps {
   contractAddress: string
@@ -52,6 +62,12 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
   const [copiedAddress, setCopiedAddress] = React.useState(false)
   const [claimHistory, setClaimHistory] = React.useState<ClaimHistoryItem[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = React.useState(false)
+  
+  // Admin state
+  const [singleLockAddress, setSingleLockAddress] = React.useState('')
+  const [singleLockAmount, setSingleLockAmount] = React.useState('')
+  const [batchLockData, setBatchLockData] = React.useState('')
+  const [tokenDecimals, setTokenDecimals] = React.useState('18')
   
   // Contract read hooks
   const { data: vestingInfo, refetch: refetchVestingInfo } = useReadContract({
@@ -117,12 +133,39 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     functionName: 'period',
   })
 
+  const { data: maxTokensToLock } = useReadContract({
+    address: contractAddress as Address,
+    abi: vestingABI,
+    functionName: 'maxTokensToLock',
+  })
+
   // Claim function
   const { 
     writeContract: claimTokens,
     data: claimHash,
     isPending: isClaimPending
   } = useWriteContract()
+
+  // Admin functions
+  const { 
+    writeContract: lockToUser,
+    data: lockToUserHash,
+    isPending: isLockToUserPending
+  } = useWriteContract()
+
+  const { 
+    writeContract: lockTokensMultiple,
+    data: lockMultipleHash,
+    isPending: isLockMultiplePending
+  } = useWriteContract()
+
+  const { isLoading: isLockToUserConfirming, isSuccess: isLockToUserSuccess } = useWaitForTransactionReceipt({
+    hash: lockToUserHash,
+  })
+
+  const { isLoading: isLockMultipleConfirming, isSuccess: isLockMultipleSuccess } = useWaitForTransactionReceipt({
+    hash: lockMultipleHash,
+  })
 
   const { isLoading: isClaimConfirming, isSuccess: isClaimSuccess } = useWaitForTransactionReceipt({
     hash: claimHash,
@@ -140,6 +183,90 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
       console.error('Claim error:', error)
       toast.error('Failed to claim tokens')
     }
+  }
+
+  // Handle single user lock
+  const handleLockToUser = () => {
+    if (!singleLockAddress || !singleLockAmount) {
+      toast.error('Please enter both address and amount')
+      return
+    }
+
+    try {
+      const amountInWei = BigInt(Math.floor(parseFloat(singleLockAmount) * 10 ** 18))
+      lockToUser({
+        address: contractAddress as Address,
+        abi: vestingABI,
+        functionName: 'lockToUser',
+        args: [singleLockAddress as Address, amountInWei],
+      })
+    } catch (error) {
+      console.error('Lock to user error:', error)
+      toast.error('Failed to lock tokens')
+    }
+  }
+
+  // Handle batch lock
+  const handleBatchLock = () => {
+    if (!batchLockData.trim()) {
+      toast.error('Please enter batch data')
+      return
+    }
+
+    try {
+      const lines = batchLockData.trim().split('\n')
+      const addresses: Address[] = []
+      const amounts: bigint[] = []
+
+      for (const line of lines) {
+        const [address, amount] = line.split(',').map(s => s.trim())
+        if (!address || !amount) {
+          toast.error(`Invalid data format: ${line}`)
+          return
+        }
+        addresses.push(address as Address)
+        amounts.push(BigInt(amount))
+      }
+
+      lockTokensMultiple({
+        address: contractAddress as Address,
+        abi: vestingABI,
+        functionName: 'lockTokensMultiple',
+        args: [addresses, amounts, BigInt(tokenDecimals)],
+      })
+    } catch (error) {
+      console.error('Batch lock error:', error)
+      toast.error('Failed to batch lock tokens')
+    }
+  }
+
+  // Generate CSV template
+  const downloadCSVTemplate = () => {
+    const template = 'address,amount\n0x123...,1000\n0x456...,2000\n0x789...,1500'
+    const blob = new Blob([template], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'vesting_template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Handle CSV upload
+  const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target?.result as string
+      const lines = text.split('\n').filter(line => line.trim())
+      // Skip header if it exists
+      const dataLines = lines[0].toLowerCase().includes('address') ? lines.slice(1) : lines
+      setBatchLockData(dataLines.join('\n'))
+      toast.success('CSV file loaded successfully')
+    }
+    reader.readAsText(file)
   }
 
   // Fetch claim history
@@ -202,6 +329,24 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
       fetchClaimHistory() // Refresh claim history
     }
   }, [isClaimSuccess, refetchVestingInfo, refetchClaimable, refetchUserInfo, fetchClaimHistory])
+
+  // Handle successful lock operations
+  React.useEffect(() => {
+    if (isLockToUserSuccess) {
+      toast.success('Tokens locked successfully for user!')
+      setSingleLockAddress('')
+      setSingleLockAmount('')
+      refetchUserInfo()
+    }
+  }, [isLockToUserSuccess, refetchUserInfo])
+
+  React.useEffect(() => {
+    if (isLockMultipleSuccess) {
+      toast.success('Batch token lock successful!')
+      setBatchLockData('')
+      refetchUserInfo()
+    }
+  }, [isLockMultipleSuccess, refetchUserInfo])
 
   // Get block explorer URL
   const getExplorerUrl = (type: 'address' | 'tx', hash: string) => {
@@ -485,6 +630,12 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                 <TabsTrigger value="history" className="data-[state=active]:bg-primary/20">
                   Claim History
                 </TabsTrigger>
+                {isOwner ? (
+                  <TabsTrigger value="admin" className="data-[state=active]:bg-primary/20">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Admin Control
+                  </TabsTrigger>
+                ) : null}
               </TabsList>
 
               <TabsContent value="schedule">
@@ -524,7 +675,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                             Release Rate
                           </span>
                           <span className="text-white font-medium">
-                            {releaseRate ? `${Number(releaseRate) / 100}% per period` : '0%'}
+                            {releaseRate ? `${(Number(releaseRate) / 21600000000).toFixed(4)}% per period` : '0%'}
                           </span>
                         </div>
                       </div>
@@ -789,6 +940,179 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {isOwner ? (
+                <TabsContent value="admin">
+                  <Card className="bg-black/50 border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-primary" />
+                        Admin Control Panel
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <Alert className="bg-primary/10 border-primary/30">
+                        <AlertCircle className="h-4 w-4 text-primary" />
+                        <AlertTitle className="text-white">Admin Access</AlertTitle>
+                        <AlertDescription className="text-white/70">
+                          You have owner privileges for this vesting contract. Use these tools to manage token allocations.
+                        </AlertDescription>
+                      </Alert>
+
+                      {/* Single User Lock */}
+                      <div className="space-y-4">
+                        <h3 className="text-white font-medium flex items-center gap-2">
+                          <UserPlus className="w-4 h-4 text-primary" />
+                          Lock Tokens for Single User
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="user-address" className="text-white/70">User Address</Label>
+                            <Input
+                              id="user-address"
+                              placeholder="0x..."
+                              value={singleLockAddress}
+                              onChange={(e) => setSingleLockAddress(e.target.value)}
+                              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="lock-amount" className="text-white/70">Amount (tokens)</Label>
+                            <Input
+                              id="lock-amount"
+                              type="number"
+                              placeholder="1000"
+                              value={singleLockAmount}
+                              onChange={(e) => setSingleLockAmount(e.target.value)}
+                              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          onClick={handleLockToUser}
+                          disabled={isLockToUserPending || isLockToUserConfirming}
+                          className="bg-primary hover:bg-primary/90 text-white"
+                        >
+                          {isLockToUserPending || isLockToUserConfirming ? (
+                            <React.Fragment>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Locking...
+                            </React.Fragment>
+                          ) : (
+                            <React.Fragment>
+                              <Lock className="w-4 h-4 mr-2" />
+                              Lock Tokens
+                            </React.Fragment>
+                          )}
+                        </Button>
+                      </div>
+
+                      <div className="border-t border-white/10 pt-6">
+                        <h3 className="text-white font-medium flex items-center gap-2 mb-4">
+                          <Users className="w-4 h-4 text-primary" />
+                          Batch Lock Tokens for Multiple Users
+                        </h3>
+                        
+                        <div className="space-y-4">
+                          <div className="flex gap-4 items-end">
+                            <div className="flex-1 space-y-2">
+                              <Label htmlFor="decimals" className="text-white/70">Token Decimals</Label>
+                              <Input
+                                id="decimals"
+                                type="number"
+                                value={tokenDecimals}
+                                onChange={(e) => setTokenDecimals(e.target.value)}
+                                className="bg-white/5 border-white/10 text-white"
+                              />
+                            </div>
+                            <Button
+                              variant="outline"
+                              onClick={downloadCSVTemplate}
+                              className="border-white/10 text-white hover:bg-white/10"
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              Download Template
+                            </Button>
+                            <div>
+                              <Input
+                                id="csv-upload"
+                                type="file"
+                                accept=".csv"
+                                onChange={handleCSVUpload}
+                                className="hidden"
+                              />
+                              <Button
+                                variant="outline"
+                                onClick={() => document.getElementById('csv-upload')?.click()}
+                                className="border-white/10 text-white hover:bg-white/10"
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                Upload CSV
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="batch-data" className="text-white/70">
+                              Batch Data (address,amount per line)
+                            </Label>
+                            <Textarea
+                              id="batch-data"
+                              placeholder="0x123...,1000
+0x456...,2000
+0x789...,1500"
+                              value={batchLockData}
+                              onChange={(e) => setBatchLockData(e.target.value)}
+                              rows={6}
+                              className="bg-white/5 border-white/10 text-white placeholder:text-white/30 font-mono text-sm"
+                            />
+                            <p className="text-white/50 text-sm">
+                              Enter one allocation per line: address,amount (without decimals)
+                            </p>
+                          </div>
+
+                          <Button
+                            onClick={handleBatchLock}
+                            disabled={isLockMultiplePending || isLockMultipleConfirming}
+                            className="bg-primary hover:bg-primary/90 text-white"
+                          >
+                            {isLockMultiplePending || isLockMultipleConfirming ? (
+                              <React.Fragment>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Processing Batch...
+                              </React.Fragment>
+                            ) : (
+                              <React.Fragment>
+                                <Users className="w-4 h-4 mr-2" />
+                                Lock Tokens (Batch)
+                              </React.Fragment>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Contract Stats for Admin */}
+                      <div className="border-t border-white/10 pt-6">
+                        <h3 className="text-white font-medium mb-4">Contract Statistics</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="p-3 bg-white/5 rounded-lg">
+                            <p className="text-white/70 text-sm mb-1">Total Locked</p>
+                            <p className="text-white font-medium">
+                              {totalLocked ? formatUnits(totalLocked as bigint, 18) : '0'} tokens
+                            </p>
+                          </div>
+                          <div className="p-3 bg-white/5 rounded-lg">
+                            <p className="text-white/70 text-sm mb-1">Max Supply</p>
+                            <p className="text-white font-medium">
+                              {maxTokensToLock ? formatUnits(maxTokensToLock as bigint, 18) : '0'} tokens
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              ) : null}
             </Tabs>
           </motion.div>
 
