@@ -69,7 +69,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
   const [singleLockAmount, setSingleLockAmount] = React.useState('')
   const [batchLockData, setBatchLockData] = React.useState('')
   const [showBatchConfirmation, setShowBatchConfirmation] = React.useState(false)
-  const [pendingBatchData, setPendingBatchData] = React.useState<{addresses: Address[], amounts: bigint[]}>({addresses: [], amounts: []})
+  const [pendingBatchData, setPendingBatchData] = React.useState<{addresses: Address[], amounts: bigint[], totalInWei: bigint}>({addresses: [], amounts: [], totalInWei: BigInt(0)})
   
   // Contract read hooks
   const { data: vestingInfo, refetch: refetchVestingInfo } = useReadContract({
@@ -376,7 +376,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
       }
 
       // Store data and show confirmation
-      setPendingBatchData({ addresses, amounts })
+      setPendingBatchData({ addresses, amounts, totalInWei: totalAmount })
       setShowBatchConfirmation(true)
     } catch (error) {
       console.error('Batch processing error:', error)
@@ -386,16 +386,11 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
 
   // Execute batch lock after confirmation
   const executeBatchLock = () => {
-    if (!tokenDecimals) {
-      toast.error('Unable to fetch token decimals')
-      return
-    }
-
     lockTokensMultiple({
       address: contractAddress as Address,
       abi: vestingABI,
       functionName: 'lockTokensMultiple',
-      args: [pendingBatchData.addresses, pendingBatchData.amounts, BigInt((tokenDecimals as number) || 18)],
+      args: [pendingBatchData.addresses, pendingBatchData.amounts],
     })
     setShowBatchConfirmation(false)
   }
@@ -1328,10 +1323,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                               <div className="p-3 bg-white/5 rounded">
                                 <p className="text-white/70 text-sm">Total Amount</p>
                                 <p className="text-white font-medium">
-                                  {formatUnits(
-                                    pendingBatchData.amounts.reduce((a, b) => a + b, BigInt(0)), 
-                                    (tokenDecimals as number) || 18
-                                  )} {(tokenSymbol as string) || 'tokens'}
+                                  {formatUnits(pendingBatchData.totalInWei, (tokenDecimals as number) || 18)} {(tokenSymbol as string) || 'tokens'}
                                 </p>
                               </div>
                             </div>

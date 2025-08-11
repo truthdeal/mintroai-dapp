@@ -222,11 +222,6 @@
         "internalType": "uint256[]",
         "name": "_amts",
         "type": "uint256[]"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_decimals",
-        "type": "uint256"
       }
     ],
     "name": "lockTokensMultiple",
