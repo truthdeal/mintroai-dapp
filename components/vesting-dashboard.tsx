@@ -263,7 +263,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
     if (newAmount > remaining) {
       return { 
         valid: false, 
-        error: `Exceeds remaining supply. Available: ${formatUnits(remaining, (tokenDecimals as number) || 18)} ${tokenSymbol || 'tokens'}` 
+        error: `Exceeds remaining supply. Available: ${parseFloat(formatUnits(remaining, (tokenDecimals as number) || 18)).toFixed(4)} ${tokenSymbol || 'tokens'}` 
       }
     }
     return { valid: true }
@@ -790,7 +790,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-white">
-                    {userTotalAmount > BigInt(0) ? formatUnits(userTotalAmount, (tokenDecimals as number) || 18) : '0'}
+                    {userTotalAmount > BigInt(0) ? parseFloat(formatUnits(userTotalAmount, (tokenDecimals as number) || 18)).toFixed(4) : '0'}
                   </div>
                 </CardContent>
               </Card>
@@ -810,7 +810,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-white">
-                    {userTotalClaimed > BigInt(0) ? formatUnits(userTotalClaimed, (tokenDecimals as number) || 18) : '0'}
+                    {userTotalClaimed > BigInt(0) ? parseFloat(formatUnits(userTotalClaimed, (tokenDecimals as number) || 18)).toFixed(4) : '0'}
                   </div>
                 </CardContent>
               </Card>
@@ -830,7 +830,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-primary">
-                    {claimableNow > BigInt(0) ? formatUnits(claimableNow, (tokenDecimals as number) || 18) : '0'}
+                    {claimableNow > BigInt(0) ? parseFloat(formatUnits(claimableNow, (tokenDecimals as number) || 18)).toFixed(4) : '0'}
                   </div>
                 </CardContent>
               </Card>
@@ -876,7 +876,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-3xl font-bold text-primary mb-2">
-                        {formatUnits(claimableNow, (tokenDecimals as number) || 18)}
+                        {parseFloat(formatUnits(claimableNow, (tokenDecimals as number) || 18)).toFixed(4)}
                       </p>
                       <p className="text-white/70">Tokens are ready to be claimed</p>
                     </div>
@@ -998,7 +998,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                           </span>
                           <span className="text-white font-medium">
                             {nextTotalVestingAmount > BigInt(0) 
-                              ? formatUnits(nextTotalVestingAmount - claimedSoFar, (tokenDecimals as number) || 18)
+                              ? parseFloat(formatUnits(nextTotalVestingAmount - claimedSoFar, (tokenDecimals as number) || 18)).toFixed(4)
                               : '0'}
                           </span>
                         </div>
@@ -1126,14 +1126,14 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                       <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
                         <span className="text-white/70">Total Locked</span>
                         <span className="text-white font-medium">
-                          {totalLocked ? formatUnits(totalLocked as bigint, (tokenDecimals as number) || 18) : '0'}
+                          {totalLocked ? parseFloat(formatUnits(totalLocked as bigint, (tokenDecimals as number) || 18)).toFixed(4) : '0'}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
                         <span className="text-white/70">Your Allocation</span>
                         <span className="text-white font-medium">
-                          {userTotalAmount > BigInt(0) ? formatUnits(userTotalAmount, (tokenDecimals as number) || 18) : '0'}
+                          {userTotalAmount > BigInt(0) ? parseFloat(formatUnits(userTotalAmount, (tokenDecimals as number) || 18)).toFixed(4) : '0'}
                         </span>
                       </div>
 
@@ -1169,7 +1169,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                             <div className="flex justify-between items-start mb-3">
                               <div>
                                 <p className="text-white font-medium mb-1">
-                                  Claimed {claim.claimedAmount} tokens
+                                  Claimed {parseFloat(claim.claimedAmount).toFixed(4)} tokens
                                 </p>
                                 <p className="text-white/50 text-sm">
                                   {formatDate(claim.timestamp)}
@@ -1182,7 +1182,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                             <div className="space-y-2">
                               <div className="flex justify-between text-sm">
                                 <span className="text-white/70">Total Claimed After</span>
-                                <span className="text-white">{claim.totalClaimed}</span>
+                                <span className="text-white">{parseFloat(claim.totalClaimed).toFixed(4)}</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-white/70">Progress</span>
@@ -1290,7 +1290,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                         </div>
                         {tokenBalance !== undefined && (
                           <p className="text-white/60 text-xs">
-                            Contract Balance: {formatUnits(tokenBalance as bigint, (tokenDecimals as number) || 18)} {(tokenSymbol as string) || 'tokens'}
+                            Contract Balance: {parseFloat(formatUnits(tokenBalance as bigint, (tokenDecimals as number) || 18)).toFixed(4)} {(tokenSymbol as string) || 'tokens'}
                           </p>
                         )}
                       </div>
@@ -1442,20 +1442,20 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                           <div className="p-3 bg-white/5 rounded-lg">
                             <p className="text-white/70 text-sm mb-1">Total Locked</p>
                             <p className="text-white font-medium">
-                              {totalLocked ? formatUnits(totalLocked as bigint, (tokenDecimals as number) || 18) : '0'} {(tokenSymbol as string) || 'tokens'}
+                              {totalLocked ? parseFloat(formatUnits(totalLocked as bigint, (tokenDecimals as number) || 18)).toFixed(4) : '0'} {(tokenSymbol as string) || 'tokens'}
                             </p>
                           </div>
                           <div className="p-3 bg-white/5 rounded-lg">
                             <p className="text-white/70 text-sm mb-1">Max Supply</p>
                             <p className="text-white font-medium">
-                              {maxTokensToLock ? formatUnits(maxTokensToLock as bigint, (tokenDecimals as number) || 18) : '0'} {(tokenSymbol as string) || 'tokens'}
+                              {maxTokensToLock ? parseFloat(formatUnits(maxTokensToLock as bigint, (tokenDecimals as number) || 18)).toFixed(4) : '0'} {(tokenSymbol as string) || 'tokens'}
                             </p>
                           </div>
                           <div className="p-3 bg-white/5 rounded-lg">
                             <p className="text-white/70 text-sm mb-1">Available to Lock</p>
                             <p className="text-white font-medium">
                               {maxTokensToLock && totalLocked 
-                                ? formatUnits((maxTokensToLock as bigint) - (totalLocked as bigint), (tokenDecimals as number) || 18) 
+                                ? parseFloat(formatUnits((maxTokensToLock as bigint) - (totalLocked as bigint), (tokenDecimals as number) || 18)).toFixed(4) 
                                 : '0'} {(tokenSymbol as string) || 'tokens'}
                             </p>
                           </div>
@@ -1464,7 +1464,7 @@ export function VestingDashboard({ contractAddress }: VestingDashboardProps) {
                           <div className="mt-4 p-3 bg-white/5 rounded-lg">
                             <p className="text-white/70 text-sm mb-1">Contract Token Balance</p>
                             <p className="text-white font-medium">
-                              {formatUnits(tokenBalance as bigint, (tokenDecimals as number) || 18)} {(tokenSymbol as string) || 'tokens'}
+                              {parseFloat(formatUnits(tokenBalance as bigint, (tokenDecimals as number) || 18)).toFixed(4)} {(tokenSymbol as string) || 'tokens'}
                             </p>
                             {(tokenBalance as bigint) < ((maxTokensToLock as bigint) || BigInt(0)) && (
                               <p className="text-yellow-400 text-xs mt-1">
