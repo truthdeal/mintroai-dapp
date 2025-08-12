@@ -332,12 +332,6 @@ export function VestingCreationForm() {
     setFormData(null)
   }
 
-  const handleSuccessClose = () => {
-    setShowSuccess(false)
-    setDeployedAddress('')
-    setFormData(null)
-  }
-
   const handleCreateAnother = () => {
     setShowSuccess(false)
     setDeployedAddress('')
@@ -817,7 +811,6 @@ export function VestingCreationForm() {
       {deployedAddress && formData && (
         <VestingSuccessDialog
           isOpen={showSuccess}
-          onClose={handleSuccessClose}
           onCreateAnother={handleCreateAnother}
           contractAddress={deployedAddress}
           transactionHash={hash || ''}

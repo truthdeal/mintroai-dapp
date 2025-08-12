@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import confetti from 'canvas-confetti'
 import { useChainId } from 'wagmi'
 import { type Chain, arbitrum, bscTestnet } from 'viem/chains'
+import { hyperEVM } from '@/config/customChains'
 import { ExternalLink, Copy, Calendar, Users, Clock } from 'lucide-react'
 import { VestingFormValues } from "./vesting-creation-form"
 import { format } from "date-fns"
@@ -13,7 +14,6 @@ import { useRouter } from "next/navigation"
 
 interface VestingSuccessDialogProps {
   isOpen: boolean
-  onClose: () => void
   onCreateAnother: () => void
   contractAddress: string
   transactionHash: string
@@ -35,6 +35,7 @@ export function VestingSuccessDialog({
     const chains: Record<number, Chain> = {
       [arbitrum.id]: arbitrum,
       [bscTestnet.id]: bscTestnet,
+      [hyperEVM.id]: hyperEVM,
     }
     
     const chain = chains[chainId]

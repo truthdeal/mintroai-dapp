@@ -1,5 +1,6 @@
 import { /* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ bscTestnet } from 'viem/chains'
 import { type Chain } from 'viem'
+import { hyperEVM } from './customChains'
 
 export interface NetworkConfig {
   chain: Chain
@@ -41,5 +42,10 @@ export const SUPPORTED_NETWORKS: { [key: number]: NetworkConfig } = {
   [bscTestnet.id]: {
     chain: bscTestnet,
     factoryAddress: "0x7628d1fcf63BFCdB9d705fdB39B0C20de9B3f22E" as `0x${string}`, // BSC Testnet factory address
+  },
+  // HyperEVM
+  [hyperEVM.id]: {
+    chain: hyperEVM,
+    factoryAddress: "0x7628d1fcf63BFCdB9d705fdB39B0C20de9B3f22E" as `0x${string}`, // HyperEVM factory address
   }
 } 
