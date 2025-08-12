@@ -1,28 +1,6 @@
 import { /* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ bscTestnet } from 'viem/chains'
 import { type Chain } from 'viem'
-
-// Custom HyperEVM chain definition
-export const hyperEVM: Chain = {
-  id: 999,
-  name: 'HyperEVM',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'HYPE',
-    symbol: 'HYPE',
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://hyperliquid.drpc.org'],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: 'HyperEVM Scan',
-      url: 'https://hyperevmscan.io',
-    },
-  },
-  testnet: false,
-}
+import { hyperEVM } from './customChains'
 
 export interface NetworkConfig {
   chain: Chain
