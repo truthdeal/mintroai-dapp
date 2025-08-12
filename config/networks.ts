@@ -1,6 +1,29 @@
 import { /* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ bscTestnet } from 'viem/chains'
 import { type Chain } from 'viem'
 
+// Custom HyperEVM chain definition
+export const hyperEVM: Chain = {
+  id: 999,
+  name: 'HyperEVM',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'HYPE',
+    symbol: 'HYPE',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://hyperliquid.drpc.org'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'HyperEVM Scan',
+      url: 'https://hyperevmscan.io',
+    },
+  },
+  testnet: false,
+}
+
 export interface NetworkConfig {
   chain: Chain
   factoryAddress: `0x${string}`
@@ -41,5 +64,10 @@ export const SUPPORTED_NETWORKS: { [key: number]: NetworkConfig } = {
   [bscTestnet.id]: {
     chain: bscTestnet,
     factoryAddress: "0x7628d1fcf63BFCdB9d705fdB39B0C20de9B3f22E" as `0x${string}`, // BSC Testnet factory address
+  },
+  // HyperEVM
+  [hyperEVM.id]: {
+    chain: hyperEVM,
+    factoryAddress: "0x7628d1fcf63BFCdB9d705fdB39B0C20de9B3f22E" as `0x${string}`, // HyperEVM factory address
   }
 } 

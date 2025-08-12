@@ -6,6 +6,7 @@ import { motion } from "framer-motion"
 import confetti from 'canvas-confetti'
 import { useChainId } from 'wagmi'
 import { type Chain, /* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ bscTestnet, /* bsc */ } from 'viem/chains'
+import { hyperEVM } from '@/config/networks'
 import { ExternalLink } from 'lucide-react'
 
 interface TokenSuccessDialogProps {
@@ -36,6 +37,7 @@ export function TokenSuccessDialog({
       // [zora.id]: zora,
       [bscTestnet.id]: bscTestnet,
       // [bsc.id]: bsc,
+      [hyperEVM.id]: hyperEVM,
     }
     
     const chain = chains[chainId]
