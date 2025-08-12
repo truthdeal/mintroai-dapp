@@ -264,7 +264,7 @@ export function VestingCreationForm() {
       const tgeTimestamp = Math.floor(tgeDate.getTime() / 1000);
       
       const contractData = {
-        contractType: 'vesting' as const,
+        contractType: 'hyper-vesting' as const,
         chatId: sessionId,
         contractName: formData.projectName,
         tokenAddress: formData.tokenContractAddress,
