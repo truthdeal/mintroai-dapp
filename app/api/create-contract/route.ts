@@ -23,7 +23,7 @@ interface TokenContractData {
 
 // Type for vesting contract data
 interface VestingContractData {
-  contractType: 'vesting';
+  contractType: 'hyper-vesting';
   chatId: string;
   contractName: string;
   tokenAddress: string;
@@ -34,6 +34,7 @@ interface VestingContractData {
   period: number;
   vestingSupply: number;
   decimals: number;
+  ownerAddress: string;
   users: string[];
   amts: number[];
 }
