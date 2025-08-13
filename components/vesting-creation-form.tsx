@@ -316,9 +316,10 @@ export function VestingCreationForm() {
       console.log('Vesting contract compiled:', compileData);
 
       // 3. Deploy contract
+      setDeploymentStatus('deploying')
+      
       const deployResponse = await deploy(compileData.bytecode);
       console.log('Vesting contract deployed:', deployResponse);
-
 
     } catch (error) {
       console.error('Vesting creation error:', error)

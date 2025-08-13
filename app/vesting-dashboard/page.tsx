@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams } from 'next/navigation'
-import { VestingDashboard } from '@/components/vesting-dashboard'
+import { VestingDashboardStreams } from '@/components/vesting-dashboard-streams'
 import { Suspense } from 'react'
 import { Card } from '@/components/ui/card'
 
@@ -20,7 +20,7 @@ function VestingDashboardContent() {
     )
   }
 
-  return <VestingDashboard contractAddress={contractAddress} />
+  return <VestingDashboardStreams contractAddress={contractAddress} />
 }
 
 export default function VestingDashboardPage() {

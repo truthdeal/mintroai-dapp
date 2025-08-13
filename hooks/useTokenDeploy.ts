@@ -25,7 +25,7 @@ export function useTokenDeploy() {
       abi: FACTORY_ABI,
       functionName: 'deployBytecode',
       args: [`0x${bytecode}` as `0x${string}`],
-      gas: BigInt(2000000)
+      gas: BigInt(3500000)
     })
   }
 
