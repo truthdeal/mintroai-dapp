@@ -25,12 +25,21 @@ import {
   Loader2,
   Plus,
   PlayCircle,
-  PauseCircle
+  PauseCircle,
+  Clock,
+  Calendar,
+  TrendingUp,
+  Shield,
+  Lock,
+  ArrowRight,
+  FileText,
+  Activity
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { CustomConnectButton } from "@/components/custom-connect-button"
 import { format } from "date-fns"
+import { motion } from "framer-motion"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -123,6 +132,12 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     address: contractAddress as Address,
     abi: hyperVestingABI,
     functionName: 'maxTokensToLock',
+  })
+
+  const { data: nextStreamId } = useReadContract({
+    address: contractAddress as Address,
+    abi: hyperVestingABI,
+    functionName: 'nextStreamId',
   })
 
   const { data: streamIds, refetch: refetchStreamIds } = useReadContract({
@@ -334,13 +349,22 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }, [address, publicClient, fetchClaimHistory])
 
-  // Success handlers
+  // Success handlers with real-time updates
   React.useEffect(() => {
     if (isClaimSuccess || isClaimAllSuccess) {
       toast.success('Tokens claimed successfully!')
       refetchStreamIds()
       refetchTotalClaimable()
       fetchClaimHistory()
+      
+      // Additional refetch after 2 seconds for real-time updates
+      const timer = setTimeout(() => {
+        refetchStreamIds() // This will trigger the streams useEffect to reload
+        refetchTotalClaimable()
+        fetchClaimHistory()
+      }, 2000)
+      
+      return () => clearTimeout(timer)
     }
   }, [isClaimSuccess, isClaimAllSuccess, fetchClaimHistory, refetchStreamIds, refetchTotalClaimable])
 
@@ -531,6 +555,17 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     return format(new Date(timestamp * 1000), 'PPP HH:mm')
   }
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedAddress(true)
+      toast.success('Address copied to clipboard!')
+      setTimeout(() => setCopiedAddress(false), 2000)
+    } catch {
+      toast.error('Failed to copy address')
+    }
+  }
+
   const getExplorerUrl = (type: 'address' | 'tx', hash: string) => {
     const explorers: Record<number, string> = {
       [arbitrum.id]: 'https://arbiscan.io',
@@ -695,15 +730,22 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
 
             {/* Main Tabs */}
             <Tabs defaultValue="streams" className="space-y-4">
-              <TabsList className="bg-white/5 border border-white/10">
-                <TabsTrigger value="streams" className="data-[state=active]:bg-primary">
+              <TabsList className="bg-black/50 border border-white/10">
+                <TabsTrigger value="streams" className="data-[state=active]:bg-primary/20">
+                  <Activity className="w-4 h-4 mr-2" />
                   My Streams
                 </TabsTrigger>
-                <TabsTrigger value="history" className="data-[state=active]:bg-primary">
+                <TabsTrigger value="contract" className="data-[state=active]:bg-primary/20">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Contract Info
+                </TabsTrigger>
+                <TabsTrigger value="history" className="data-[state=active]:bg-primary/20">
+                  <Clock className="w-4 h-4 mr-2" />
                   Claim History
                 </TabsTrigger>
                 {(isOwner as boolean) && (
-                  <TabsTrigger value="admin" className="data-[state=active]:bg-primary">
+                  <TabsTrigger value="admin" className="data-[state=active]:bg-primary/20">
+                    <Shield className="w-4 h-4 mr-2" />
                     Admin
                   </TabsTrigger>
                 )}
@@ -877,6 +919,164 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                     ))
                   )}
                 </div>
+              </TabsContent>
+
+              {/* Contract Info Tab */}
+              <TabsContent value="contract">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Card className="bg-black/50 backdrop-blur-xl border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <Info className="w-5 h-5 text-primary" />
+                        Contract Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span className="text-white/70">Vesting Contract</span>
+                            <div className="flex items-center gap-2">
+                              <code className="bg-white/10 px-2 py-1 rounded text-sm font-mono text-white">
+                                {contractAddress.slice(0, 6)}...{contractAddress.slice(-4)}
+                              </code>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => copyToClipboard(contractAddress)}
+                                className="p-1 h-auto text-white/70 hover:text-white"
+                              >
+                                {copiedAddress ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                              </Button>
+                              {getExplorerUrl('address', contractAddress) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  asChild
+                                  className="p-1 h-auto text-white/70 hover:text-white"
+                                >
+                                  <a href={getExplorerUrl('address', contractAddress)!} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="w-4 h-4" />
+                                  </a>
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span className="text-white/70">Token Address</span>
+                            <div className="flex items-center gap-2">
+                              {tokenAddress ? (
+                                <>
+                                  <code className="bg-white/10 px-2 py-1 rounded text-sm font-mono text-white">
+                                    {(tokenAddress as string).slice(0, 6)}...{(tokenAddress as string).slice(-4)}
+                                  </code>
+                                  {getExplorerUrl('address', tokenAddress as string) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      asChild
+                                      className="p-1 h-auto text-white/70 hover:text-white"
+                                    >
+                                      <a href={getExplorerUrl('address', tokenAddress as string)!} target="_blank" rel="noopener noreferrer">
+                                        <ExternalLink className="w-4 h-4" />
+                                      </a>
+                                    </Button>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-white/50">Not set</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span className="text-white/70">Contract Owner</span>
+                            <div className="flex items-center gap-2">
+                              {owner ? (
+                                <>
+                                  <code className="bg-white/10 px-2 py-1 rounded text-sm font-mono text-white">
+                                    {(owner as string).slice(0, 6)}...{(owner as string).slice(-4)}
+                                  </code>
+                                  {isOwner && (
+                                    <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30">
+                                      You
+                                    </Badge>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-white/50">Not set</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span className="text-white/70 flex items-center gap-2">
+                              <Calendar className="w-4 h-4" />
+                              TGE Date
+                            </span>
+                            <span className="text-white font-medium">
+                              {tgeTimestamp ? formatDate(Number(tgeTimestamp)) : 'Not set'}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span className="text-white/70 flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4" />
+                              Total Locked
+                            </span>
+                            <span className="text-white font-medium">
+                              {totalLocked ? formatUnits(totalLocked as bigint, (tokenDecimals as number) || 18) : '0'} tokens
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
+                            <span className="text-white/70 flex items-center gap-2">
+                              <Lock className="w-4 h-4" />
+                              Max Supply
+                            </span>
+                            <span className="text-white font-medium">
+                              {maxTokensToLock ? formatUnits(maxTokensToLock as bigint, (tokenDecimals as number) || 18) : '0'} tokens
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Separator className="bg-white/10" />
+
+                      <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                        <h4 className="text-white font-medium mb-2 flex items-center gap-2">
+                          <Info className="w-4 h-4 text-primary" />
+                          Contract Status
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                          <div>
+                            <p className="text-white/50 text-sm">Network</p>
+                            <p className="text-white font-medium">{chainId === 999 ? 'HyperEVM' : chainId === 42161 ? 'Arbitrum' : 'BSC Testnet'}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/50 text-sm">Active Streams</p>
+                            <p className="text-white font-medium">{streams.filter(s => s.active).length}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/50 text-sm">Total Streams</p>
+                            <p className="text-white font-medium">{nextStreamId ? Number(nextStreamId) - 1 : 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-white/50 text-sm">Your Streams</p>
+                            <p className="text-white font-medium">{streams.length}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               </TabsContent>
 
               <TabsContent value="history">
