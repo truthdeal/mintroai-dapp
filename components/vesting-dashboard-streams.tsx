@@ -31,7 +31,7 @@ import { CustomConnectButton } from "@/components/custom-connect-button"
 import { format } from "date-fns"
 
 // Vesting modules
-import type { VestingDashboardProps } from '@/lib/vesting/types'
+import type { VestingDashboardProps, Stream } from '@/lib/vesting/types'
 import { 
   useVestingStreams, 
   useTokenApproval, 
@@ -401,6 +401,67 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       })
     } catch (error) {
       console.error('Update stream error:', error)
+      toast.error('Failed to update stream: ' + (error as Error).message)
+    }
+  }
+
+  // Handler specifically for updating searched streams (from admin panel)
+  const handleUpdateSearchedStream = (
+    stream: Stream, // Stream object passed from admin panel
+    amount: string,
+    releaseMonths: string,
+    tgePercentage: string,
+    periodDays: string
+  ) => {
+    try {
+      const amountInWei = parseAmountToWei(amount, (tokenDecimals as number) || 18)
+      const releaseRate = monthsToReleaseRate(Number(releaseMonths), Number(periodDays))
+      const tgeRate = percentageToBasisPoints(Number(tgePercentage))
+      const period = periodDaysToSeconds(Number(periodDays))
+      
+      // Validate the update
+      const isTgeStarted = Boolean(tgeTimestamp && Date.now() / 1000 >= Number(tgeTimestamp as bigint))
+      const validation = validateStreamUpdate(
+        amountInWei,
+        stream.totalClaimed,
+        releaseRate,
+        tgeRate,
+        period,
+        isTgeStarted,
+        stream.tgeRate
+      )
+      
+      if (!validation.valid) {
+        toast.error(validation.error || 'Invalid stream parameters')
+        return
+      }
+      
+      if (validation.adjustedTgeRate !== undefined) {
+        toast.warning(validation.error || 'TGE rate adjusted')
+      }
+      
+      console.log('Updating searched stream:', {
+        streamId: stream.streamId,
+        amountInWei: amountInWei.toString(),
+        releaseRate,
+        tgeRate: validation.adjustedTgeRate ?? tgeRate,
+        period
+      })
+      
+      updateStream({
+        address: contractAddress as Address,
+        abi: hyperVestingABI,
+        functionName: 'updateStream',
+        args: [
+          BigInt(stream.streamId),
+          amountInWei,
+          releaseRate,
+          validation.adjustedTgeRate ?? tgeRate,
+          period,
+        ],
+      })
+    } catch (error) {
+      console.error('Update searched stream error:', error)
       toast.error('Failed to update stream: ' + (error as Error).message)
     }
   }
@@ -887,6 +948,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                     isAddStreamPending={isAddStreamPending}
                     isAddMultipleStreamsPending={isAddMultipleStreamsPending}
                     onUpdateStream={handleUpdateStream}
+                    onUpdateSearchedStream={handleUpdateSearchedStream}
                     onCancelStream={handleCancelStream}
                     isUpdateStreamPending={isUpdateStreamPending}
                   />

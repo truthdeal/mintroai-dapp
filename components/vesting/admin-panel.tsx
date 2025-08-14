@@ -70,6 +70,13 @@ interface AdminPanelProps {
     tgePercentage: string,
     periodDays: string
   ) => void
+  onUpdateSearchedStream?: (
+    stream: Stream,
+    amount: string,
+    releaseMonths: string,
+    tgePercentage: string,
+    periodDays: string
+  ) => void
   onCancelStream: (streamId: number) => void
   isUpdateStreamPending?: boolean
 }
@@ -92,6 +99,7 @@ export function AdminPanel({
   isAddStreamPending,
   isAddMultipleStreamsPending,
   onUpdateStream,
+  onUpdateSearchedStream,
   onCancelStream,
   isUpdateStreamPending = false
 }: AdminPanelProps) {
@@ -106,6 +114,7 @@ export function AdminPanel({
   const [editReleaseMonths, setEditReleaseMonths] = React.useState('')
   const [editTgeRate, setEditTgeRate] = React.useState('')
   const [editPeriod, setEditPeriod] = React.useState('')
+  const [isUpdating, setIsUpdating] = React.useState(false)
   
   // Stream creation state
   const [newStreamUser, setNewStreamUser] = React.useState('')
@@ -116,6 +125,24 @@ export function AdminPanel({
   const [newStreamPeriod, setNewStreamPeriod] = React.useState('30')
   
   const isTgeStarted = Boolean(tgeTimestamp && Date.now() / 1000 >= Number(tgeTimestamp))
+  
+  // React effect to handle successful update
+  React.useEffect(() => {
+
+    if (!isUpdateStreamPending && editingStream && isUpdating) {
+      // Close the edit form on successful update
+      setEditingStream(null)
+      setIsUpdating(false)
+      // The success toast will be shown by the parent component
+      
+      // Refresh the search results to show updated data
+      if (userLookupAddress) {
+        setTimeout(() => {
+          onSearchUserStreams(userLookupAddress)
+        }, 500)
+      }
+    }
+  }, [isUpdateStreamPending, editingStream, isUpdating, userLookupAddress, onSearchUserStreams])
   
   const handleDepositTokens = () => {
     if (!depositAmount) {
@@ -491,6 +518,12 @@ export function AdminPanel({
                                 onClick={() => {
                                   if (confirm(`Are you sure you want to cancel stream #${stream.streamId}?`)) {
                                     onCancelStream(stream.streamId)
+                                    // Refresh search results after a short delay
+                                    setTimeout(() => {
+                                      if (userLookupAddress) {
+                                        onSearchUserStreams(userLookupAddress)
+                                      }
+                                    }, 1500)
                                   }
                                 }}
                               >
@@ -645,19 +678,54 @@ export function AdminPanel({
                 <div className="flex gap-2">
                   <Button
                     onClick={() => {
-                      onUpdateStream(
-                        editingStream.streamId,
-                        editAmount,
-                        editReleaseMonths,
-                        editTgeRate,
-                        editPeriod
-                      )
-                      setEditingStream(null)
+                      if (!editAmount || !editReleaseMonths) {
+                        toast.error('Please fill all required fields')
+                        return
+                      }
+                      
+                      try {
+                        setIsUpdating(true)
+                        
+                        // Log for debugging
+                        console.log('Updating stream from admin panel:', {
+                          streamId: editingStream.streamId,
+                          amount: editAmount,
+                          releaseMonths: editReleaseMonths,
+                          tgeRate: editTgeRate,
+                          period: editPeriod,
+                          stream: editingStream
+                        })
+                        
+                        // Use onUpdateSearchedStream if available (for searched streams)
+                        // Otherwise fall back to onUpdateStream (for user's own streams)
+                        if (onUpdateSearchedStream) {
+                          onUpdateSearchedStream(
+                            editingStream,
+                            editAmount,
+                            editReleaseMonths,
+                            editTgeRate,
+                            editPeriod
+                          )
+                        } else {
+                          onUpdateStream(
+                            editingStream.streamId,
+                            editAmount,
+                            editReleaseMonths,
+                            editTgeRate,
+                            editPeriod
+                          )
+                        }
+                        // Don't close the form here - wait for success callback
+                      } catch (error) {
+                        console.error('Update error:', error)
+                        toast.error('Failed to update stream')
+                        setIsUpdating(false)
+                      }
                     }}
                     className="flex-1 bg-primary hover:bg-primary/90"
-                    disabled={isUpdateStreamPending}
+                    disabled={isUpdateStreamPending || isUpdating}
                   >
-                    {isUpdateStreamPending ? (
+                    {(isUpdateStreamPending || isUpdating) ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
                       <Edit className="w-4 h-4 mr-2" />
@@ -665,9 +733,13 @@ export function AdminPanel({
                     Update Stream
                   </Button>
                   <Button
-                    onClick={() => setEditingStream(null)}
+                    onClick={() => {
+                      setEditingStream(null)
+                      setIsUpdating(false)
+                    }}
                     variant="outline"
                     className="flex-1 border-white/10 text-white hover:bg-white/10"
+                    disabled={isUpdateStreamPending || isUpdating}
                   >
                     Cancel
                   </Button>
