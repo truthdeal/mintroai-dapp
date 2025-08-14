@@ -31,7 +31,6 @@ import {
   TrendingUp,
   Shield,
   Lock,
-  ArrowRight,
   FileText,
   Activity,
   Users,
@@ -229,7 +228,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
   const {
     writeContract: cancelStreamContract,
     data: cancelStreamHash,
-    isPending: isCancelStreamPending
+    // isPending: isCancelStreamPending
   } = useWriteContract()
   
   const {
@@ -272,7 +271,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     hash: updateStreamHash,
   })
   
-  const { isLoading: isCancelStreamConfirming, isSuccess: isCancelStreamSuccess } = useWaitForTransactionReceipt({
+  const { /* isLoading: isCancelStreamConfirming, */ isSuccess: isCancelStreamSuccess } = useWaitForTransactionReceipt({
     hash: cancelStreamHash,
   })
   
@@ -586,13 +585,48 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
   }
   
   const handleUpdateStream = () => {
-    if (!selectedStreamForEdit) return
+    if (!selectedStreamForEdit) {
+      toast.error('No stream selected for editing')
+      return
+    }
     
     try {
-      const amountInWei = editStreamAmount ? parseUnits(editStreamAmount, (tokenDecimals as number) || 18) : selectedStreamForEdit.totalAmount
-      const releaseRate = editStreamReleaseRate ? Number(editStreamReleaseRate) : selectedStreamForEdit.releaseRate
-      const tgeRate = editStreamTgeRate ? Number(editStreamTgeRate) * 100 : selectedStreamForEdit.tgeRate
-      const period = editStreamPeriod ? Number(editStreamPeriod) * 86400 : selectedStreamForEdit.period
+      // Parse amounts with proper conversions
+      const amountInWei = editStreamAmount 
+        ? parseUnits(editStreamAmount, (tokenDecimals as number) || 18) 
+        : selectedStreamForEdit.totalAmount
+      
+      // Convert release rate from months to the contract's expected format
+      // The contract expects releaseRate as uint40 with BASE_RATE = 21600000000
+      const releaseRate = editStreamReleaseRate 
+        ? Math.floor(Number(editStreamReleaseRate) * 2160000000000) // months to rate format
+        : selectedStreamForEdit.releaseRate
+      
+      // TGE rate is stored as basis points (0-10000)
+      const tgeRate = editStreamTgeRate 
+        ? Math.floor(Number(editStreamTgeRate) * 100) // percentage to basis points
+        : selectedStreamForEdit.tgeRate
+      
+      // Period in seconds
+      const period = editStreamPeriod 
+        ? Math.floor(Number(editStreamPeriod) * 86400) // days to seconds
+        : selectedStreamForEdit.period
+      
+      console.log('Updating stream:', {
+        streamId: selectedStreamForEdit.streamId,
+        amount: amountInWei.toString(),
+        releaseRate,
+        tgeRate,
+        period
+      })
+      
+      // Note: After TGE, tgeRate cannot be changed. The contract will revert if we try to change it.
+      // We should warn the user about this
+      if (tgeTimestamp && Date.now() / 1000 >= Number(tgeTimestamp)) {
+        if (editStreamTgeRate && Number(editStreamTgeRate) * 100 !== selectedStreamForEdit.tgeRate) {
+          toast.warning('TGE rate cannot be changed after TGE has started')
+        }
+      }
       
       updateStream({
         address: contractAddress as Address,
@@ -643,7 +677,17 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
             abi: hyperVestingABI,
             functionName: 'getStreamInfo',
             args: [checksumAddress, streamId],
-          }) as any
+          }) as {
+            totalAmount: bigint
+            totalClaimed: bigint
+            startTime: bigint
+            cliff: bigint
+            releaseRate: number
+            tgeRate: number
+            period: number
+            active: boolean
+            claimable: bigint
+          }
           
           return {
             streamId: Number(streamId),
@@ -676,6 +720,11 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     
     try {
       const lines = batchStreamData.split('\n').filter(line => line.trim())
+      if (lines.length === 0) {
+        toast.error('No valid data found')
+        return
+      }
+      
       const users: Address[] = []
       const amounts: bigint[] = []
       const cliffs: bigint[] = []
@@ -683,14 +732,45 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       const tgeRates: number[] = []
       const periods: number[] = []
       
-      lines.forEach((line) => {
-        const [address, amount, cliff, rate, tge, period] = line.split(',').map(s => s.trim())
+      lines.forEach((line, index) => {
+        const parts = line.split(',').map(s => s.trim())
+        if (parts.length < 6) {
+          throw new Error(`Line ${index + 1} has insufficient data. Expected 6 values, got ${parts.length}`)
+        }
+        
+        const [address, amount, cliff, rate, tge, period] = parts
+        
+        // Validate address
         users.push(getAddress(address))
+        
+        // Amount in wei
         amounts.push(parseUnits(amount, (tokenDecimals as number) || 18))
-        cliffs.push(BigInt(Number(cliff || 0) * 30 * 86400)) // months to seconds
-        releaseRates.push(Number(rate || 12) * 2160000000000) // months to rate format
-        tgeRates.push(Number(tge || 10) * 100) // percentage to basis points
-        periods.push(Number(period || 30) * 86400) // days to seconds
+        
+        // Cliff in seconds (months * 30 days * 86400 seconds)
+        cliffs.push(BigInt(Math.floor(Number(cliff || 0) * 30 * 86400)))
+        
+        // Release rate: convert months to contract format
+        // The contract expects releaseRate as uint40 with BASE_RATE = 21600000000
+        releaseRates.push(Math.floor(Number(rate || 12) * 2160000000000))
+        
+        // TGE rate: percentage to basis points (0-10000)
+        const tgeValue = Math.floor(Number(tge || 10) * 100)
+        if (tgeValue > 10000) {
+          throw new Error(`Line ${index + 1}: TGE rate cannot exceed 100%`)
+        }
+        tgeRates.push(tgeValue)
+        
+        // Period: days to seconds
+        periods.push(Math.floor(Number(period || 30) * 86400))
+      })
+      
+      console.log('Creating batch streams:', {
+        users,
+        amounts: amounts.map(a => a.toString()),
+        cliffs: cliffs.map(c => c.toString()),
+        releaseRates,
+        tgeRates,
+        periods
       })
       
       addMultipleStreams({
@@ -711,15 +791,25 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       return
     }
 
+    if (!tokenAddress) {
+      toast.error('Token address not found. Please check contract configuration.')
+      return
+    }
+
     try {
       const amountInWei = parseUnits(depositAmount, (tokenDecimals as number) || 18)
+      console.log('Deposit amount in wei:', amountInWei.toString())
+      console.log('Token address:', tokenAddress)
+      console.log('Contract address:', contractAddress)
       
       // Check if we need approval
       const currentAllowance = (tokenAllowance as bigint) || BigInt(0)
+      console.log('Current allowance:', currentAllowance.toString())
       
       if (currentAllowance < amountInWei) {
         // Need approval first
         toast.info('Approval required. Please approve the transaction.')
+        console.log('Requesting approval for:', amountInWei.toString())
         approveToken({
           address: tokenAddress as Address,
           abi: erc20ABI,
@@ -728,6 +818,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
         })
       } else {
         // Already approved, proceed with deposit
+        console.log('Sufficient allowance, depositing tokens')
         depositTokens({
           address: contractAddress as Address,
           abi: hyperVestingABI,
@@ -1349,6 +1440,28 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                       You have owner privileges for this vesting contract. Use these tools to manage streams.
                     </AlertDescription>
                   </Alert>
+                  
+                  {tgeTimestamp ? (
+                    <Alert className={Date.now() / 1000 >= Number(tgeTimestamp as bigint) ? "bg-yellow-500/10 border-yellow-500/30" : "bg-blue-500/10 border-blue-500/30"}>
+                      <Info className="h-4 w-4" />
+                      <AlertTitle className="text-white">TGE Status</AlertTitle>
+                      <AlertDescription className="text-white/70">
+                        {Date.now() / 1000 >= Number(tgeTimestamp as bigint) ? (
+                          <>
+                            <strong>TGE has started</strong> on {formatDate(Number(tgeTimestamp as bigint))}.
+                            <br />
+                            ⚠️ Note: TGE rates cannot be modified for any streams after TGE has started.
+                          </>
+                        ) : (
+                          <>
+                            <strong>TGE will start</strong> on {formatDate(Number(tgeTimestamp as bigint))}.
+                            <br />
+                            ✅ All stream parameters can still be modified before TGE starts.
+                          </>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
 
                   {/* Contract Stats */}
                   <Card className="bg-black/50 backdrop-blur-xl border-white/10">
