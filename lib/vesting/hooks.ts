@@ -335,7 +335,9 @@ export function useStreamSearch(contractAddress: string) {
  */
 export function useCreateStream(
   contractAddress: string,
-  tokenDecimals: number = 18
+  tokenDecimals: number = 18,
+  onTxStart?: () => void,
+  onTxError?: (error: Error) => void
 ) {
   const { 
     writeContract: addStream,
@@ -362,6 +364,11 @@ export function useCreateStream(
       const tgeRate = percentageToBasisPoints(Number(tgePercentage))
       const periodSeconds = periodDaysToSeconds(Number(periodDays))
       
+      // Call the onTxStart callback if provided
+      if (onTxStart) {
+        onTxStart()
+      }
+      
       addStream({
         address: contractAddress as Address,
         abi: hyperVestingABI,
@@ -379,12 +386,16 @@ export function useCreateStream(
       toast.info('Stream creation transaction submitted')
     } catch (error) {
       console.error('Create stream error:', error)
+      if (onTxError) {
+        onTxError(error as Error)
+      }
       toast.error(`Failed to create stream: ${(error as Error).message}`)
     }
-  }, [contractAddress, tokenDecimals, addStream])
+  }, [contractAddress, tokenDecimals, addStream, onTxStart, onTxError])
   
   return {
     createStream,
+    addStreamHash,
     isAddStreamPending,
     isAddStreamConfirming,
     isAddStreamSuccess

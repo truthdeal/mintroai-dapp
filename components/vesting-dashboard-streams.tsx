@@ -65,7 +65,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
   const [selectedStreamIds, setSelectedStreamIds] = React.useState<number[]>([])
   
   // Transaction modal hook
-  const { modalState, openModal, updateStatus, closeModal, resetModal } = useTransactionModal()
+  const { modalState, openModal, updateStatus, closeModal } = useTransactionModal()
   
   // Use custom hooks
   const { streams, refetch: refetchStreams } = useVestingStreams(contractAddress, address)
@@ -123,12 +123,18 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     functionName: 'decimals',
   })
   
-  // Create stream hook after tokenDecimals is available
+  // Create stream hook after tokenDecimals is available with modal callbacks
   const { 
-    createStream, 
+    createStream,
+    addStreamHash, 
     isAddStreamPending, 
     isAddStreamSuccess 
-  } = useCreateStream(contractAddress, Number(tokenDecimals) || 18)
+  } = useCreateStream(
+    contractAddress, 
+    Number(tokenDecimals) || 18,
+    () => openModal('Create Stream', 'Creating new vesting stream...'),
+    (error) => updateStatus('error', { errorMessage: error.message })
+  )
 
   const { data: tokenBalance, refetch: refetchTokenBalance } = useReadContract({
     address: tokenAddress as Address,
@@ -255,13 +261,23 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }, [isClaimAllSuccess, refetchStreams, refetchHistory, updateStatus])
 
+  // Add stream transaction status
+  React.useEffect(() => {
+    if (addStreamHash) {
+      updateStatus('pending', { txHash: addStreamHash })
+    }
+  }, [addStreamHash, updateStatus])
+
   React.useEffect(() => {
     if (isAddStreamSuccess) {
-      toast.success('Stream created successfully!')
+      updateStatus('success', {
+        title: 'Stream Created',
+        description: 'New vesting stream has been created successfully!'
+      })
       refetchStreams()
       refetchTotalLocked()
     }
-  }, [isAddStreamSuccess, refetchStreams, refetchTotalLocked])
+  }, [isAddStreamSuccess, refetchStreams, refetchTotalLocked, updateStatus])
   
   // Update stream transaction status
   React.useEffect(() => {
@@ -299,13 +315,23 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }, [isCancelStreamSuccess, refetchStreams, refetchTotalLocked, updateStatus])
   
+  // Batch streams transaction status
+  React.useEffect(() => {
+    if (addMultipleStreamsHash) {
+      updateStatus('pending', { txHash: addMultipleStreamsHash })
+    }
+  }, [addMultipleStreamsHash, updateStatus])
+
   React.useEffect(() => {
     if (isAddMultipleStreamsSuccess) {
-      toast.success('Batch streams created successfully!')
+      updateStatus('success', {
+        title: 'Batch Streams Created',
+        description: 'All vesting streams have been created successfully!'
+      })
       refetchStreams()
       refetchTotalLocked()
     }
-  }, [isAddMultipleStreamsSuccess, refetchStreams, refetchTotalLocked])
+  }, [isAddMultipleStreamsSuccess, refetchStreams, refetchTotalLocked, updateStatus])
 
   // Deposit transaction status
   React.useEffect(() => {
@@ -513,6 +539,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
         toast.warning(validation.error || 'TGE rate adjusted')
       }
       
+      openModal('Update Stream', `Updating stream #${stream.streamId}`)
       updateStream({
         address: contractAddress as Address,
         abi: hyperVestingABI,
@@ -527,7 +554,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       })
     } catch (error) {
       console.error('Update searched stream error:', error)
-      toast.error('Failed to update stream: ' + (error as Error).message)
+      updateStatus('error', { errorMessage: (error as Error).message })
     }
   }
 
@@ -591,6 +618,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       const tgeRates = entries.map(e => e.tgeRate)
       const periods = entries.map(e => e.period)
       
+      openModal('Create Batch Streams', `Creating ${users.length} vesting streams...`)
       addMultipleStreams({
         address: contractAddress as Address,
         abi: hyperVestingABI,
@@ -599,7 +627,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       })
     } catch (error) {
       console.error('Batch create error:', error)
-      toast.error('Failed to create batch streams: ' + (error as Error).message)
+      updateStatus('error', { errorMessage: (error as Error).message })
     }
   }
 
