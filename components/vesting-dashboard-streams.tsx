@@ -131,6 +131,13 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     args: contractAddress ? [contractAddress as Address] : undefined,
   })
 
+  const { data: userTokenBalance, refetch: refetchUserTokenBalance } = useReadContract({
+    address: tokenAddress as Address,
+    abi: erc20ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+  })
+
   // Token approval hook
   const {
     approveToken,
@@ -260,8 +267,9 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       toast.success('Tokens deposited successfully!')
       setDepositAmount('')
       refetchTokenBalance()
+      refetchUserTokenBalance()
     }
-  }, [isDepositSuccess, refetchTokenBalance])
+  }, [isDepositSuccess, refetchTokenBalance, refetchUserTokenBalance])
 
   // Handle approval success - automatically deposit after approval
   React.useEffect(() => {
@@ -934,6 +942,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                     tokenDecimals={(tokenDecimals as number) || 18}
                     tokenSymbol={(tokenSymbol as string) || 'Tokens'}
                     tokenBalance={tokenBalance as bigint}
+                    userTokenBalance={userTokenBalance as bigint}
                     totalLocked={totalLocked as bigint}
                     maxTokensToLock={maxTokensToLock as bigint}
                     isOwner={isOwner}
@@ -951,6 +960,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                     onUpdateSearchedStream={handleUpdateSearchedStream}
                     onCancelStream={handleCancelStream}
                     isUpdateStreamPending={isUpdateStreamPending}
+                    isDepositSuccess={isDepositSuccess}
                   />
                 </TabsContent>
               )}

@@ -43,6 +43,7 @@ interface AdminPanelProps {
   tokenDecimals?: number
   tokenSymbol?: string
   tokenBalance?: bigint
+  userTokenBalance?: bigint
   totalLocked?: bigint
   maxTokensToLock?: bigint
   isOwner: boolean
@@ -79,12 +80,14 @@ interface AdminPanelProps {
   ) => void
   onCancelStream: (streamId: number) => void
   isUpdateStreamPending?: boolean
+  isDepositSuccess?: boolean
 }
 
 export function AdminPanel({
   tokenDecimals = 18,
   tokenSymbol = 'Tokens',
   tokenBalance,
+  userTokenBalance,
   totalLocked,
   maxTokensToLock,
   isOwner,
@@ -101,11 +104,13 @@ export function AdminPanel({
   onUpdateStream,
   onUpdateSearchedStream,
   onCancelStream,
-  isUpdateStreamPending = false
+  isUpdateStreamPending = false,
+  isDepositSuccess = false
 }: AdminPanelProps) {
   const [showCreateStream, setShowCreateStream] = React.useState(false)
   const [showBatchCreate, setShowBatchCreate] = React.useState(false)
   const [showUserLookup, setShowUserLookup] = React.useState(false)
+  const [showDepositTokens, setShowDepositTokens] = React.useState(false)
   const [depositAmount, setDepositAmount] = React.useState('')
   const [userLookupAddress, setUserLookupAddress] = React.useState('')
   const [batchStreamData, setBatchStreamData] = React.useState('')
@@ -150,8 +155,17 @@ export function AdminPanel({
       return
     }
     onDepositTokens(depositAmount)
-    setDepositAmount('')
+    // Don't clear the amount here - let the parent component handle it after success
   }
+  
+  // Clear deposit amount when deposit succeeds
+  React.useEffect(() => {
+    if (isDepositSuccess && depositAmount) {
+      setDepositAmount('')
+      setShowDepositTokens(false)
+      toast.success('Tokens deposited successfully!')
+    }
+  }, [isDepositSuccess, depositAmount])
   
   const handleCreateStream = () => {
     if (!newStreamUser || !newStreamAmount) {
@@ -293,26 +307,13 @@ export function AdminPanel({
             User Lookup
           </Button>
           
-          <div className="flex gap-2">
-            <Input
-              type="number"
-              placeholder="Amount"
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-              className="bg-white/5 border-white/10 text-white"
-            />
-            <Button
-              onClick={handleDepositTokens}
-              className="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30"
-              disabled={isDepositPending}
-            >
-              {isDepositPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Upload className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
+          <Button
+            onClick={() => setShowDepositTokens(!showDepositTokens)}
+            className="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Deposit Tokens
+          </Button>
         </div>
         
         {/* Create Stream Form */}
@@ -746,6 +747,80 @@ export function AdminPanel({
                 </div>
               </div>
             )}
+          </div>
+        )}
+        
+        {/* Deposit Tokens Section */}
+        {showDepositTokens && (
+          <div className="space-y-4 p-4 bg-white/5 rounded-lg">
+            <h3 className="text-white font-semibold">Deposit Tokens to Contract</h3>
+            <Alert className="bg-blue-500/10 border-blue-500/30">
+              <AlertDescription className="text-blue-200">
+                Deposit tokens to the vesting contract. This will first request approval for the contract to spend your tokens, then deposit them.
+              </AlertDescription>
+            </Alert>
+            
+            <div className="space-y-4">
+              {/* Token Balance Info */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white/5 rounded p-3">
+                  <p className="text-white/60 text-sm mb-1">Your Wallet Balance</p>
+                  <p className="text-white font-semibold">
+                    {userTokenBalance ? formatWeiToAmount(userTokenBalance, tokenDecimals) : '0'} {tokenSymbol}
+                  </p>
+                </div>
+                <div className="bg-white/5 rounded p-3">
+                  <p className="text-white/60 text-sm mb-1">Contract Balance</p>
+                  <p className="text-white font-semibold">
+                    {tokenBalance ? formatWeiToAmount(tokenBalance, tokenDecimals) : '0'} {tokenSymbol}
+                  </p>
+                </div>
+                <div className="bg-white/5 rounded p-3">
+                  <p className="text-white/60 text-sm mb-1">Total Locked</p>
+                  <p className="text-white font-semibold">
+                    {totalLocked ? formatWeiToAmount(totalLocked, tokenDecimals) : '0'} {tokenSymbol}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Deposit Amount Input */}
+              <div>
+                <Label className="text-white/60">Amount to Deposit ({tokenSymbol})</Label>
+                <Input
+                  type="number"
+                  placeholder="Enter amount"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white mt-2"
+                />
+              </div>
+              
+              {/* Deposit Button */}
+              <Button
+                onClick={handleDepositTokens}
+                className="w-full bg-green-500 hover:bg-green-600 text-white"
+                disabled={isDepositPending || !depositAmount}
+              >
+                {isDepositPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Approve & Deposit {depositAmount ? `${depositAmount} ${tokenSymbol}` : 'Tokens'}
+                  </>
+                )}
+              </Button>
+              
+              {/* Instructions */}
+              <div className="text-white/40 text-xs space-y-1">
+                <p>• Step 1: Approve the contract to spend your tokens</p>
+                <p>• Step 2: Deposit tokens to the contract</p>
+                <p>• Both transactions will be requested automatically</p>
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
