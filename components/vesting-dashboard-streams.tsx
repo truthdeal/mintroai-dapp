@@ -51,6 +51,8 @@ import {
 } from '@/lib/vesting/utils'
 import { AdminPanel } from '@/components/vesting/admin-panel'
 import { StreamCard } from '@/components/vesting/stream-card'
+import { TransactionModal } from '@/components/vesting/transaction-modal'
+import { useTransactionModal } from '@/hooks/useTransactionModal'
 
 export function VestingDashboardStreams({ contractAddress }: VestingDashboardProps) {
   const { address, isConnected } = useAccount()
@@ -61,6 +63,9 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
   const [depositAmount, setDepositAmount] = React.useState('')
   const [pendingDepositAmount, setPendingDepositAmount] = React.useState('')
   const [selectedStreamIds, setSelectedStreamIds] = React.useState<number[]>([])
+  
+  // Transaction modal hook
+  const { modalState, openModal, updateStatus, closeModal, resetModal } = useTransactionModal()
   
   // Use custom hooks
   const { streams, refetch: refetchStreams } = useVestingStreams(contractAddress, address)
@@ -215,21 +220,40 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
   })
 
   // Effects for success notifications
+  // Transaction status updates for claims
+  React.useEffect(() => {
+    if (claimHash) {
+      updateStatus('pending', { txHash: claimHash })
+    }
+  }, [claimHash, updateStatus])
+
   React.useEffect(() => {
     if (isClaimSuccess) {
-      toast.success('Tokens claimed successfully!')
+      updateStatus('success', { 
+        title: 'Claim Successful',
+        description: 'Your tokens have been claimed successfully!'
+      })
       refetchStreams()
       refetchHistory()
     }
-  }, [isClaimSuccess, refetchStreams, refetchHistory])
+  }, [isClaimSuccess, refetchStreams, refetchHistory, updateStatus])
+
+  React.useEffect(() => {
+    if (claimAllHash) {
+      updateStatus('pending', { txHash: claimAllHash })
+    }
+  }, [claimAllHash, updateStatus])
 
   React.useEffect(() => {
     if (isClaimAllSuccess) {
-      toast.success('All tokens claimed successfully!')
+      updateStatus('success', {
+        title: 'Claim All Successful',
+        description: 'All your tokens have been claimed successfully!'
+      })
       refetchStreams()
       refetchHistory()
     }
-  }, [isClaimAllSuccess, refetchStreams, refetchHistory])
+  }, [isClaimAllSuccess, refetchStreams, refetchHistory, updateStatus])
 
   React.useEffect(() => {
     if (isAddStreamSuccess) {
@@ -239,21 +263,41 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }, [isAddStreamSuccess, refetchStreams, refetchTotalLocked])
   
+  // Update stream transaction status
+  React.useEffect(() => {
+    if (updateStreamHash) {
+      updateStatus('pending', { txHash: updateStreamHash })
+    }
+  }, [updateStreamHash, updateStatus])
+
   React.useEffect(() => {
     if (isUpdateStreamSuccess) {
-      toast.success('Stream updated successfully!')
+      updateStatus('success', {
+        title: 'Stream Updated',
+        description: 'Stream has been updated successfully!'
+      })
       refetchStreams()
       refetchTotalLocked()
     }
-  }, [isUpdateStreamSuccess, refetchStreams, refetchTotalLocked])
+  }, [isUpdateStreamSuccess, refetchStreams, refetchTotalLocked, updateStatus])
   
+  // Cancel stream transaction status
+  React.useEffect(() => {
+    if (cancelStreamHash) {
+      updateStatus('pending', { txHash: cancelStreamHash })
+    }
+  }, [cancelStreamHash, updateStatus])
+
   React.useEffect(() => {
     if (isCancelStreamSuccess) {
-      toast.success('Stream cancelled successfully!')
+      updateStatus('success', {
+        title: 'Stream Cancelled',
+        description: 'Stream has been cancelled successfully!'
+      })
       refetchStreams()
       refetchTotalLocked()
     }
-  }, [isCancelStreamSuccess, refetchStreams, refetchTotalLocked])
+  }, [isCancelStreamSuccess, refetchStreams, refetchTotalLocked, updateStatus])
   
   React.useEffect(() => {
     if (isAddMultipleStreamsSuccess) {
@@ -263,24 +307,38 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }, [isAddMultipleStreamsSuccess, refetchStreams, refetchTotalLocked])
 
+  // Deposit transaction status
+  React.useEffect(() => {
+    if (depositHash) {
+      updateStatus('pending', { txHash: depositHash })
+    }
+  }, [depositHash, updateStatus])
+
   React.useEffect(() => {
     if (isDepositSuccess) {
-      toast.success('Tokens deposited successfully!')
+      updateStatus('success', {
+        title: 'Deposit Successful',
+        description: 'Tokens have been deposited successfully!'
+      })
       setDepositAmount('')
       setPendingDepositAmount('')
       refetchTokenBalance()
       refetchUserTokenBalance()
     }
-  }, [isDepositSuccess, refetchTokenBalance, refetchUserTokenBalance])
+  }, [isDepositSuccess, refetchTokenBalance, refetchUserTokenBalance, updateStatus])
 
   // Handle approval success - automatically deposit after approval
   React.useEffect(() => {
     if (isApproveSuccess && pendingDepositAmount) {
-      toast.success('Approval successful! Now depositing tokens...')
+      updateStatus('success', {
+        title: 'Approval Successful',
+        description: 'Now depositing tokens...'
+      })
       refetchAllowance()
       
       // Small delay to ensure allowance is updated
       setTimeout(() => {
+        openModal('Deposit Tokens', `Depositing ${pendingDepositAmount} ${tokenSymbol || 'tokens'}`)
         const amountInWei = parseAmountToWei(pendingDepositAmount, (tokenDecimals as number) || 18)
         depositTokens({
           address: contractAddress as Address,
@@ -291,11 +349,12 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
         setPendingDepositAmount('') // Clear pending amount after initiating deposit
       }, 1000)
     }
-  }, [isApproveSuccess, pendingDepositAmount, tokenDecimals, depositTokens, contractAddress, refetchAllowance])
+  }, [isApproveSuccess, pendingDepositAmount, tokenDecimals, depositTokens, contractAddress, refetchAllowance, openModal, tokenSymbol, updateStatus])
 
   // Handlers
   const handleClaimStream = (streamId: number) => {
     try {
+      openModal('Claim Tokens', `Claiming tokens from stream #${streamId}`)
       claimStream({
         address: contractAddress as Address,
         abi: hyperVestingABI,
@@ -304,12 +363,13 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       })
     } catch (error) {
       console.error('Claim error:', error)
-      toast.error('Failed to claim: ' + (error as Error).message)
+      updateStatus('error', { errorMessage: (error as Error).message })
     }
   }
 
   const handleClaimAll = () => {
     try {
+      openModal('Claim All Tokens', 'Claiming all available tokens from your streams')
       claimAll({
         address: contractAddress as Address,
         abi: hyperVestingABI,
@@ -317,7 +377,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       })
     } catch (error) {
       console.error('Claim all error:', error)
-      toast.error('Failed to claim all: ' + (error as Error).message)
+      updateStatus('error', { errorMessage: (error as Error).message })
     }
   }
 
@@ -346,6 +406,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
 
     try {
+      openModal('Cancel Stream', `Cancelling stream #${streamId}`)
       cancelStreamContract({
         address: contractAddress as Address,
         abi: hyperVestingABI,
@@ -354,7 +415,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       })
     } catch (error) {
       console.error('Cancel stream error:', error)
-      toast.error('Failed to cancel stream: ' + (error as Error).message)
+      updateStatus('error', { errorMessage: (error as Error).message })
     }
   }
   
@@ -398,6 +459,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
         toast.warning(validation.error || 'TGE rate adjusted')
       }
       
+      openModal('Update Stream', `Updating stream #${streamId}`)
       updateStream({
         address: contractAddress as Address,
         abi: hyperVestingABI,
@@ -412,7 +474,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       })
     } catch (error) {
       console.error('Update stream error:', error)
-      toast.error('Failed to update stream: ' + (error as Error).message)
+      updateStatus('error', { errorMessage: (error as Error).message })
     }
   }
 
@@ -491,7 +553,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       
       if (currentAllowance < amountInWei) {
         // Need approval first
-        toast.info('Approval required. Please check your wallet for the approval request.')
+        openModal('Token Approval', `Approving ${depositAmountToUse} ${tokenSymbol || 'tokens'} for deposit`)
         setPendingDepositAmount(depositAmountToUse) // Store the amount for the approval success effect
         
         try {
@@ -499,10 +561,12 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
         } catch (approvalError) {
           console.error('Approval failed:', approvalError)
           setPendingDepositAmount('') // Clear pending amount on error
+          updateStatus('error', { errorMessage: (approvalError as Error).message })
           throw approvalError
         }
       } else {
         // Already approved, proceed with deposit
+        openModal('Deposit Tokens', `Depositing ${depositAmountToUse} ${tokenSymbol || 'tokens'}`)
         depositTokens({
           address: contractAddress as Address,
           abi: hyperVestingABI,
@@ -558,6 +622,17 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-gray-900 to-black">
+      {/* Transaction Modal */}
+      <TransactionModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        status={modalState.status}
+        title={modalState.title}
+        description={modalState.description}
+        errorMessage={modalState.errorMessage}
+        txHash={modalState.txHash}
+        chainId={chainId}
+      />
       {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/20 via-transparent to-transparent blur-3xl opacity-30 animate-pulse" />
