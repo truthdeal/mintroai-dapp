@@ -35,9 +35,6 @@ export const VESTING_CONSTANTS = {
     97: 'https://testnet.bscscan.com', // BSC Testnet
     999: 'https://hyperevmscan.io', // HyperEVM
   } as Record<number, string>,
-  
-  // Target date for claim history
-  CLAIM_HISTORY_START_DATE: new Date('2025-08-01T00:00:00Z'),
 } as const
 
 export const PERIOD_OPTIONS = [

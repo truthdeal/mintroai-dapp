@@ -11,7 +11,7 @@ export const hyperEVM: Chain = {
   },
   rpcUrls: {
     default: {
-      http: ['https://rpc.hyperliquid.xyz/evm'],
+      http: ['https://hyperliquid.drpc.org'],
     },
   },
   blockExplorers: {

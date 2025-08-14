@@ -12,14 +12,12 @@ import erc20ABI from '@/constants/erc20ABI.json'
 import type { Stream, ClaimHistoryItem } from './types'
 import { 
   ensureChecksumAddress, 
-  estimateBlockForDate,
   monthsToReleaseRate,
   percentageToBasisPoints,
   cliffMonthsToSeconds,
   periodDaysToSeconds,
   parseAmountToWei
 } from './utils'
-import { VESTING_CONSTANTS } from './constants'
 
 /**
  * Hook to fetch vesting streams for a user
@@ -192,11 +190,11 @@ export function useClaimHistory(
     setError(null)
     
     try {
-      // Estimate block for August 1, 2025
-      const targetBlock = await estimateBlockForDate(
-        publicClient,
-        VESTING_CONSTANTS.CLAIM_HISTORY_START_DATE
-      )
+      // Get current block number
+      const currentBlock = await publicClient.getBlockNumber()
+      
+      // Start from 950 blocks earlier to avoid API rejection
+      const fromBlock = currentBlock > BigInt(950) ? currentBlock - BigInt(950) : BigInt(0)
       
       const logs = await publicClient.getLogs({
         address: contractAddress as Address,
@@ -204,7 +202,7 @@ export function useClaimHistory(
         args: {
           user: userAddress,
         },
-        fromBlock: targetBlock,
+        fromBlock: fromBlock,
         toBlock: 'latest',
       })
       

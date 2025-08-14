@@ -226,37 +226,3 @@ export function getExplorerUrl(
   return `${baseUrl}/${type}/${hash}`
 }
 
-/**
- * Estimate block number for a target date
- */
-interface PublicClient {
-  getBlockNumber: () => Promise<bigint>
-  getBlock: (args: { blockNumber: bigint }) => Promise<{ timestamp: bigint }>
-}
-
-export async function estimateBlockForDate(
-  publicClient: PublicClient,
-  targetDate: Date
-): Promise<bigint> {
-  try {
-    const currentBlock = await publicClient.getBlockNumber()
-    const currentBlockData = await publicClient.getBlock({ blockNumber: currentBlock })
-    const currentTimestamp = Number(currentBlockData.timestamp)
-    
-    const targetTimestamp = Math.floor(targetDate.getTime() / 1000)
-    const timeDiff = targetTimestamp - currentTimestamp
-    
-    // Estimate ~2 second block time for most chains
-    const blockTime = 2
-    const blockDiff = Math.floor(timeDiff / blockTime)
-    
-    const estimatedBlock = currentBlock + BigInt(blockDiff)
-    
-    // Ensure we don't go negative
-    return estimatedBlock > BigInt(0) ? estimatedBlock : BigInt(1)
-  } catch (error) {
-    console.error('Error estimating block for date:', error)
-    // Fallback to a reasonable default
-    return BigInt(1000000)
-  }
-}
