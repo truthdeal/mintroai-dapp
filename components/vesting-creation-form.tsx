@@ -610,7 +610,7 @@ export function VestingCreationForm() {
               <AccordionTrigger className="text-white hover:text-primary">
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-primary" />
-                  Vesting Configuration
+                  Initial Vesting Configuration
                 </div>
               </AccordionTrigger>
               <AccordionContent className="space-y-6 pt-6">
@@ -701,10 +701,13 @@ export function VestingCreationForm() {
               <AccordionTrigger className="text-white hover:text-primary">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-primary" />
-                  Vesting Recipients ({fields.length})
+                  Initial Vesting Recipients ({fields.length})
                 </div>
               </AccordionTrigger>
               <AccordionContent className="space-y-6 pt-6">
+                <div className="text-sm text-white/60 bg-white/5 p-3 rounded-lg border border-white/10 mb-4">
+                  <p>You can edit/cancel these recipients vesting schedule or add new ones later through the Admin Panel after deployment.</p>
+                </div>
                 <div className="space-y-4">
                   {fields.map((field, index) => (
                     <motion.div

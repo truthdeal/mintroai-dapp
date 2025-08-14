@@ -196,9 +196,9 @@ export function VestingConfirmationDialog({
                 </div>
               </div>
 
-              {/* Vesting Configuration */}
+              {/* Initial Vesting Configuration */}
               <div className="pt-3 border-t border-white/10 space-y-2">
-                <div className="text-sm text-white/50">Vesting Configuration</div>
+                <div className="text-sm text-white/50">Initial Vesting Configuration</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <div className="text-xs text-white/50">Cliff Period</div>
@@ -219,12 +219,12 @@ export function VestingConfirmationDialog({
                 </div>
               </div>
 
-              {/* Vesting Recipients */}
+              {/* Initial Vesting Recipients */}
               {formData.vestingUsers && formData.vestingUsers.length > 0 && (
                 <div className="pt-3 border-t border-white/10 space-y-2">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-primary" />
-                    <div className="text-sm text-white/50">Recipients ({formData.vestingUsers.length})</div>
+                    <div className="text-sm text-white/50">Initial Recipients ({formData.vestingUsers.length})</div>
                   </div>
                   <div className="space-y-2 max-h-24 overflow-y-auto">
                     {formData.vestingUsers.map((user, index) => (
