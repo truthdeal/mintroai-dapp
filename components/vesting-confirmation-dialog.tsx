@@ -3,10 +3,11 @@
 import * as React from "react"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { VestingFormValues } from "./vesting-creation-form"
-import { X, Calendar, Users } from "lucide-react"
+import { X, Calendar, Users, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 import { format } from "date-fns"
+import { useChainId } from 'wagmi'
 
 interface VestingConfirmationDialogProps {
   isOpen: boolean
@@ -39,6 +40,9 @@ export function VestingConfirmationDialog({
   formData,
   deploymentStatus
 }: VestingConfirmationDialogProps) {
+  const chainId = useChainId()
+  const isHyperliquid = chainId === 998 || chainId === 999
+  
   const getButtonContent = () => {
     switch (deploymentStatus) {
       case 'creating':
@@ -125,6 +129,20 @@ export function VestingConfirmationDialog({
           </AlertDialogHeader>
 
           <div className="mt-3 space-y-2">
+            {isHyperliquid && deploymentStatus === 'idle' && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-yellow-200">
+                    <p className="font-semibold mb-1">Hyperliquid Deployment Notice</p>
+                    <p className="text-xs text-yellow-200/80">
+                      Large contracts on Hyperliquid use big blocks which may take up to 1 minute to deploy. 
+                      The deployment will automatically use the appropriate block size.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="bg-white/5 rounded-lg p-3 space-y-2.5">
               {/* Project Details */}
               <div className="space-y-2">
