@@ -362,7 +362,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     
     try {
       const amountInWei = parseAmountToWei(amount, (tokenDecimals as number) || 18)
-      const releaseRate = monthsToReleaseRate(Number(releaseMonths))
+      const releaseRate = monthsToReleaseRate(Number(releaseMonths), Number(periodDays))
       const tgeRate = percentageToBasisPoints(Number(tgePercentage))
       const period = periodDaysToSeconds(Number(periodDays))
       
@@ -620,7 +620,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                       {(isClaimAllPending || isClaimAllConfirming) ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       ) : null}
-                      Claim All Available
+                      Claim All Available ({formatWeiToAmount(totalClaimableNow, (tokenDecimals as number) || 18)} {(tokenSymbol as string) || 'Tokens'})
                     </Button>
                     
                     {selectedStreamIds.length > 0 && (

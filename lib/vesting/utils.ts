@@ -4,13 +4,15 @@ import type { BatchStreamEntry } from './types'
 
 /**
  * Convert months to release rate format expected by the contract
+ * Formula: releaseRate = BASE_RATE / months * period / 30
+ * For standard 30-day period, this simplifies to: releaseRate = BASE_RATE / months
  */
-export function monthsToReleaseRate(months: number): number {
+export function monthsToReleaseRate(months: number, periodDays: number = 30): number {
   if (months <= 0 || months > VESTING_CONSTANTS.MAX_RELEASE_MONTHS) {
     throw new Error(`Release months must be between ${VESTING_CONSTANTS.MIN_RELEASE_MONTHS} and ${VESTING_CONSTANTS.MAX_RELEASE_MONTHS}`)
   }
   
-  const releaseRate = Math.floor(months * VESTING_CONSTANTS.BASE_RATE)
+  const releaseRate = Math.floor(VESTING_CONSTANTS.BASE_RATE / months * periodDays / 30)
   
   if (releaseRate > VESTING_CONSTANTS.MAX_UINT40) {
     throw new Error('Release rate value exceeds maximum allowed')
@@ -21,10 +23,12 @@ export function monthsToReleaseRate(months: number): number {
 
 /**
  * Convert release rate back to months for display
+ * Formula: months = BASE_RATE / releaseRate * period / 30
  */
-export function releaseRateToMonths(releaseRate: number): number {
+export function releaseRateToMonths(releaseRate: number, periodDays: number = 30): number {
   if (releaseRate === 0) return 0
-  return releaseRate / VESTING_CONSTANTS.BASE_RATE
+  // Inverse: months = BASE_RATE / (releaseRate * 30 / period)
+  return VESTING_CONSTANTS.BASE_RATE / releaseRate * periodDays / 30
 }
 
 /**
@@ -153,7 +157,7 @@ export function parseBatchStreamData(
         address: ensureChecksumAddress(address),
         amount: parseAmountToWei(amount, tokenDecimals),
         cliff: cliffMonthsToSeconds(Number(cliff)),
-        releaseRate: monthsToReleaseRate(Number(releaseMonths)),
+        releaseRate: monthsToReleaseRate(Number(releaseMonths), Number(periodDays)),
         tgeRate: percentageToBasisPoints(Number(tgePercentage)),
         period: periodDaysToSeconds(Number(periodDays)),
       })

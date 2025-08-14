@@ -1,6 +1,8 @@
 export const VESTING_CONSTANTS = {
   // Base rate for release rate calculations (from contract)
-  BASE_RATE: 2160000000000,
+  // This is used in the formula: releaseRate = 21600000000 / months * period / 30
+  // For standard 30-day period: releaseRate = 21600000000 / months
+  BASE_RATE: 21600000000,
   
   // Time conversions
   SECONDS_PER_DAY: 86400,

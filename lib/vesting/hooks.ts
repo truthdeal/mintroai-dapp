@@ -366,7 +366,7 @@ export function useCreateStream(
       const checksumAddress = ensureChecksumAddress(user)
       const amountInWei = parseAmountToWei(amount, tokenDecimals)
       const cliffSeconds = cliffMonthsToSeconds(Number(cliffMonths))
-      const releaseRate = monthsToReleaseRate(Number(releaseMonths))
+      const releaseRate = monthsToReleaseRate(Number(releaseMonths), Number(periodDays))
       const tgeRate = percentageToBasisPoints(Number(tgePercentage))
       const periodSeconds = periodDaysToSeconds(Number(periodDays))
       

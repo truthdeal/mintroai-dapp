@@ -85,7 +85,7 @@ export function StreamCard({
   
   const handleEdit = () => {
     setEditAmount(formatWeiToAmount(stream.totalAmount, tokenDecimals, 18))
-    setEditReleaseMonths(releaseRateToMonths(stream.releaseRate).toString())
+    setEditReleaseMonths(releaseRateToMonths(stream.releaseRate, periodSecondsToDays(stream.period)).toString())
     setEditTgeRate(basisPointsToPercentage(stream.tgeRate).toString())
     setEditPeriod(periodSecondsToDays(stream.period).toString())
     setIsEditing(true)
@@ -275,7 +275,7 @@ export function StreamCard({
                 <div>
                   <p className="text-white/60">Start Time</p>
                   <p className="text-white">
-                    {format(new Date(Number(stream.startTime) * 1000), 'PP')}
+                    {format(new Date(Number(stream.startTime) * 1000), 'MMM dd, yyyy HH:mm')} UTC
                   </p>
                 </div>
               </div>
@@ -295,7 +295,7 @@ export function StreamCard({
                 <div>
                   <p className="text-white/60">Release Period</p>
                   <p className="text-white">
-                    {releaseRateToMonths(stream.releaseRate).toFixed(1)} months
+                    {Math.round(releaseRateToMonths(stream.releaseRate, periodSecondsToDays(stream.period)))} months
                   </p>
                 </div>
               </div>
