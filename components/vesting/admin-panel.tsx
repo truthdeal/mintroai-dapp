@@ -19,14 +19,23 @@ import {
   Plus,
   Search,
   AlertCircle,
-  Loader2
+  Loader2,
+  Edit,
+  Trash2,
+  Clock,
+  TrendingUp,
+  Calendar
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PERIOD_OPTIONS } from '@/lib/vesting/constants'
 import { 
   ensureChecksumAddress,
   parseBatchStreamData,
-  formatWeiToAmount
+  formatWeiToAmount,
+  releaseRateToMonths,
+  basisPointsToPercentage,
+  cliffSecondsToMonths,
+  periodSecondsToDays
 } from '@/lib/vesting/utils'
 import type { Stream } from '@/lib/vesting/types'
 
@@ -54,6 +63,15 @@ interface AdminPanelProps {
   isDepositPending: boolean
   isAddStreamPending: boolean
   isAddMultipleStreamsPending: boolean
+  onUpdateStream: (
+    streamId: number,
+    amount: string,
+    releaseMonths: string,
+    tgePercentage: string,
+    periodDays: string
+  ) => void
+  onCancelStream: (streamId: number) => void
+  isUpdateStreamPending?: boolean
 }
 
 export function AdminPanel({
@@ -72,7 +90,10 @@ export function AdminPanel({
   isSearching,
   isDepositPending,
   isAddStreamPending,
-  isAddMultipleStreamsPending
+  isAddMultipleStreamsPending,
+  onUpdateStream,
+  onCancelStream,
+  isUpdateStreamPending = false
 }: AdminPanelProps) {
   const [showCreateStream, setShowCreateStream] = React.useState(false)
   const [showBatchCreate, setShowBatchCreate] = React.useState(false)
@@ -80,6 +101,11 @@ export function AdminPanel({
   const [depositAmount, setDepositAmount] = React.useState('')
   const [userLookupAddress, setUserLookupAddress] = React.useState('')
   const [batchStreamData, setBatchStreamData] = React.useState('')
+  const [editingStream, setEditingStream] = React.useState<Stream | null>(null)
+  const [editAmount, setEditAmount] = React.useState('')
+  const [editReleaseMonths, setEditReleaseMonths] = React.useState('')
+  const [editTgeRate, setEditTgeRate] = React.useState('')
+  const [editPeriod, setEditPeriod] = React.useState('')
   
   // Stream creation state
   const [newStreamUser, setNewStreamUser] = React.useState('')
@@ -409,23 +435,242 @@ export function AdminPanel({
                 <p className="text-white/60 text-sm">
                   Found {searchResults.length} stream(s)
                 </p>
-                <div className="max-h-[300px] overflow-y-auto space-y-2">
-                  {searchResults.map((stream) => (
-                    <div key={stream.streamId} className="bg-white/5 rounded p-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-white">Stream #{stream.streamId}</span>
-                        <span className={`text-sm ${stream.active ? 'text-green-400' : 'text-red-400'}`}>
-                          {stream.active ? 'Active' : 'Cancelled'}
-                        </span>
+                <div className="max-h-[600px] overflow-y-auto space-y-3">
+                  {searchResults.map((stream) => {
+                    const releaseMonths = Math.round(releaseRateToMonths(stream.releaseRate, periodSecondsToDays(stream.period)))
+                    const tgePercentage = basisPointsToPercentage(stream.tgeRate)
+                    const cliffMonths = Math.round(cliffSecondsToMonths(stream.cliff))
+                    const periodDays = periodSecondsToDays(stream.period)
+                    const progress = stream.totalAmount > BigInt(0) 
+                      ? Number((stream.totalClaimed * BigInt(100)) / stream.totalAmount)
+                      : 0
+                    const startDate = new Date(Number(stream.startTime) * 1000)
+                    
+                    return (
+                      <div key={stream.streamId} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                        {/* Header */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-white font-medium">Stream #{stream.streamId}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                stream.active 
+                                  ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                                  : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                              }`}>
+                                {stream.active ? 'Active' : 'Cancelled'}
+                              </span>
+                            </div>
+                            <p className="text-white/40 text-xs mt-1">
+                              Started: {startDate.toLocaleDateString()} {startDate.toLocaleTimeString()}
+                            </p>
+                          </div>
+                          
+                          {stream.active && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                                onClick={() => {
+                                  setEditingStream(stream)
+                                  setEditAmount(formatWeiToAmount(stream.totalAmount, tokenDecimals, 18))
+                                  setEditReleaseMonths(releaseMonths.toString())
+                                  setEditTgeRate(tgePercentage.toString())
+                                  setEditPeriod(periodDays.toString())
+                                }}
+                                disabled={isUpdateStreamPending}
+                              >
+                                <Edit className="w-3 h-3 mr-1" />
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                onClick={() => {
+                                  if (confirm(`Are you sure you want to cancel stream #${stream.streamId}?`)) {
+                                    onCancelStream(stream.streamId)
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Cancel
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Amount Information */}
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <p className="text-white/60 text-xs mb-1">Total Amount</p>
+                            <p className="text-white font-semibold">
+                              {formatWeiToAmount(stream.totalAmount, tokenDecimals)} {tokenSymbol}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-white/60 text-xs mb-1">Claimed</p>
+                            <p className="text-green-400 font-semibold">
+                              {formatWeiToAmount(stream.totalClaimed, tokenDecimals)} {tokenSymbol}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        <div className="mb-3">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-white/60">Progress</span>
+                            <span className="text-white/60">{progress.toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full bg-white/10 rounded-full h-2">
+                            <div 
+                              className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Stream Parameters */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div className="bg-white/5 rounded p-2">
+                            <div className="flex items-center gap-1 mb-1">
+                              <Clock className="w-3 h-3 text-white/40" />
+                              <p className="text-white/60 text-xs">Cliff</p>
+                            </div>
+                            <p className="text-white text-sm font-medium">
+                              {cliffMonths} months
+                            </p>
+                          </div>
+                          
+                          <div className="bg-white/5 rounded p-2">
+                            <div className="flex items-center gap-1 mb-1">
+                              <Calendar className="w-3 h-3 text-white/40" />
+                              <p className="text-white/60 text-xs">Release</p>
+                            </div>
+                            <p className="text-white text-sm font-medium">
+                              {releaseMonths} months
+                            </p>
+                          </div>
+                          
+                          <div className="bg-white/5 rounded p-2">
+                            <div className="flex items-center gap-1 mb-1">
+                              <TrendingUp className="w-3 h-3 text-white/40" />
+                              <p className="text-white/60 text-xs">TGE</p>
+                            </div>
+                            <p className="text-white text-sm font-medium">
+                              {tgePercentage}%
+                            </p>
+                          </div>
+                          
+                          <div className="bg-white/5 rounded p-2">
+                            <div className="flex items-center gap-1 mb-1">
+                              <Clock className="w-3 h-3 text-white/40" />
+                              <p className="text-white/60 text-xs">Period</p>
+                            </div>
+                            <p className="text-white text-sm font-medium">
+                              {periodDays === 1 ? 'Daily' : 
+                               periodDays === 7 ? 'Weekly' :
+                               periodDays === 30 ? 'Monthly' :
+                               periodDays === 90 ? 'Quarterly' :
+                               `${periodDays} days`}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Claimable Amount */}
+                        {stream.active && stream.claimable > BigInt(0) && (
+                          <div className="mt-3 p-2 bg-green-500/10 rounded border border-green-500/30">
+                            <p className="text-green-400 text-sm">
+                              Claimable Now: {formatWeiToAmount(stream.claimable, tokenDecimals)} {tokenSymbol}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-white/60 text-sm mt-1">
-                        Amount: {formatWeiToAmount(stream.totalAmount, tokenDecimals)} {tokenSymbol}
-                      </div>
-                      <div className="text-white/60 text-sm">
-                        Claimed: {formatWeiToAmount(stream.totalClaimed, tokenDecimals)} {tokenSymbol}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Edit Stream Modal */}
+            {editingStream && (
+              <div className="mt-4 p-4 bg-primary/10 rounded-lg border border-primary/30">
+                <h4 className="text-white font-semibold mb-3">Edit Stream #{editingStream.streamId}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <Label className="text-white/60 text-sm">Amount ({tokenSymbol})</Label>
+                    <Input
+                      type="number"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-white/60 text-sm">Release Period (months)</Label>
+                    <Input
+                      type="number"
+                      value={editReleaseMonths}
+                      onChange={(e) => setEditReleaseMonths(e.target.value)}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-white/60 text-sm">TGE Release (%)</Label>
+                    <Input
+                      type="number"
+                      value={editTgeRate}
+                      onChange={(e) => setEditTgeRate(e.target.value)}
+                      className="bg-white/5 border-white/10 text-white"
+                      disabled={isTgeStarted}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-white/60 text-sm">Vesting Period (days)</Label>
+                    <Select value={editPeriod} onValueChange={setEditPeriod}>
+                      <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PERIOD_OPTIONS.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      onUpdateStream(
+                        editingStream.streamId,
+                        editAmount,
+                        editReleaseMonths,
+                        editTgeRate,
+                        editPeriod
+                      )
+                      setEditingStream(null)
+                    }}
+                    className="flex-1 bg-primary hover:bg-primary/90"
+                    disabled={isUpdateStreamPending}
+                  >
+                    {isUpdateStreamPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Edit className="w-4 h-4 mr-2" />
+                    )}
+                    Update Stream
+                  </Button>
+                  <Button
+                    onClick={() => setEditingStream(null)}
+                    variant="outline"
+                    className="flex-1 border-white/10 text-white hover:bg-white/10"
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </div>
             )}

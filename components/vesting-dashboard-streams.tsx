@@ -886,6 +886,9 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                     isDepositPending={isDepositPending}
                     isAddStreamPending={isAddStreamPending}
                     isAddMultipleStreamsPending={isAddMultipleStreamsPending}
+                    onUpdateStream={handleUpdateStream}
+                    onCancelStream={handleCancelStream}
+                    isUpdateStreamPending={isUpdateStreamPending}
                   />
                 </TabsContent>
               )}
