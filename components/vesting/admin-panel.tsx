@@ -308,7 +308,7 @@ export function AdminPanel({
             className="bg-primary/20 hover:bg-primary/30 text-white border border-primary/30"
           >
             <Search className="w-4 h-4 mr-2" />
-            User Lookup
+            Edit/Cancel Streams
           </Button>
           
           <Button
@@ -438,10 +438,10 @@ export function AdminPanel({
           </div>
         )}
         
-        {/* User Lookup */}
+        {/* Edit/Cancel Streams */}
         {showUserLookup && (
           <div className="space-y-4 p-4 bg-white/5 rounded-lg">
-            <h3 className="text-white font-semibold">User Stream Lookup</h3>
+            <h3 className="text-white font-semibold">Edit or Cancel User Streams</h3>
             <div className="flex gap-2">
               <Input
                 placeholder="Enter user address"
