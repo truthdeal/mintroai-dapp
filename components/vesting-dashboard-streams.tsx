@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient } from 'wagmi'
-import { formatUnits, parseUnits, type Address, parseAbiItem, getAddress } from 'viem'
-import { arbitrum, bscTestnet } from 'viem/chains'
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi'
+import { type Address } from 'viem'
 import hyperVestingABI from '@/constants/hyperVestingABI.json'
 import erc20ABI from '@/constants/erc20ABI.json'
 import { toast } from "sonner"
@@ -18,105 +17,55 @@ import {
   ExternalLink, 
   Copy,
   CheckCircle,
-  Info,
   Timer,
   Unlock,
-  AlertCircle,
   Loader2,
-  Plus,
-  PlayCircle,
-  PauseCircle,
-  Clock,
-  Calendar,
-  TrendingUp,
-  Shield,
-  Lock,
-  FileText,
   Activity,
-  Users,
-  Upload
+  FileText,
+  Shield
 } from 'lucide-react'
+import { Label } from "@/components/ui/label"
 import Link from 'next/link'
 import Image from 'next/image'
 import { CustomConnectButton } from "@/components/custom-connect-button"
 import { format } from "date-fns"
-import { motion } from "framer-motion"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
-interface VestingDashboardProps {
-  contractAddress: string
-}
-
-interface Stream {
-  streamId: number
-  totalAmount: bigint
-  totalClaimed: bigint
-  startTime: bigint
-  cliff: bigint
-  releaseRate: number
-  tgeRate: number
-  period: number
-  active: boolean
-  claimable: bigint
-}
-
-interface ClaimHistoryItem {
-  transactionHash: string
-  timestamp: number
-  streamId: number
-  claimedAmount: string
-  totalClaimed: string
-  totalAmount: string
-  blockNumber: bigint
-}
+// Vesting modules
+import type { VestingDashboardProps } from '@/lib/vesting/types'
+import { 
+  useVestingStreams, 
+  useTokenApproval, 
+  useClaimHistory,
+  useStreamSearch,
+  useCreateStream
+} from '@/lib/vesting/hooks'
+import { 
+  parseAmountToWei,
+  monthsToReleaseRate,
+  percentageToBasisPoints,
+  periodDaysToSeconds,
+  parseBatchStreamData,
+  formatWeiToAmount,
+  validateStreamUpdate,
+  getExplorerUrl
+} from '@/lib/vesting/utils'
+import { AdminPanel } from '@/components/vesting/admin-panel'
+import { StreamCard } from '@/components/vesting/stream-card'
 
 export function VestingDashboardStreams({ contractAddress }: VestingDashboardProps) {
   const { address, isConnected } = useAccount()
   const chainId = useChainId()
-  const publicClient = usePublicClient()
   
   // State
-  const [streams, setStreams] = React.useState<Stream[]>([])
-  const [selectedStreamIds, setSelectedStreamIds] = React.useState<number[]>([])
-  const [claimHistory, setClaimHistory] = React.useState<ClaimHistoryItem[]>([])
-  const [isLoadingHistory, setIsLoadingHistory] = React.useState(false)
   const [copiedAddress, setCopiedAddress] = React.useState(false)
-  
-  // Admin state
-  const [showCreateStream, setShowCreateStream] = React.useState(false)
-  const [showBatchCreate, setShowBatchCreate] = React.useState(false)
-  const [showUserLookup, setShowUserLookup] = React.useState(false)
   const [depositAmount, setDepositAmount] = React.useState('')
-  const [userLookupAddress, setUserLookupAddress] = React.useState('')
-  const [lookupStreams, setLookupStreams] = React.useState<Stream[]>([])
-  const [selectedStreamForEdit, setSelectedStreamForEdit] = React.useState<Stream | null>(null)
-  const [batchStreamData, setBatchStreamData] = React.useState('')
+  const [selectedStreamIds, setSelectedStreamIds] = React.useState<number[]>([])
   
-  // Stream creation state
-  const [newStreamUser, setNewStreamUser] = React.useState('')
-  const [newStreamAmount, setNewStreamAmount] = React.useState('')
-  const [newStreamCliff, setNewStreamCliff] = React.useState('0')
-  const [newStreamTgeRate, setNewStreamTgeRate] = React.useState('10')
-  const [newStreamReleaseMonths, setNewStreamReleaseMonths] = React.useState('12')
-  const [newStreamPeriod, setNewStreamPeriod] = React.useState('30')
+  // Use custom hooks
+  const { streams, refetch: refetchStreams } = useVestingStreams(contractAddress, address)
+  const { history: claimHistory, refetch: refetchHistory } = useClaimHistory(contractAddress, address)
+  const { searchResults, isSearching, searchUserStreams } = useStreamSearch(contractAddress)
   
-  // Stream edit state
-  const [editStreamAmount, setEditStreamAmount] = React.useState('')
-  const [editStreamReleaseRate, setEditStreamReleaseRate] = React.useState('')
-  const [editStreamTgeRate, setEditStreamTgeRate] = React.useState('')
-  const [editStreamPeriod, setEditStreamPeriod] = React.useState('')
-
   // Contract reads
   const { data: tokenAddress } = useReadContract({
     address: contractAddress as Address,
@@ -148,26 +97,6 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     functionName: 'maxTokensToLock',
   })
 
-  const { data: nextStreamId } = useReadContract({
-    address: contractAddress as Address,
-    abi: hyperVestingABI,
-    functionName: 'nextStreamId',
-  })
-
-  const { data: streamIds, refetch: refetchStreamIds } = useReadContract({
-    address: contractAddress as Address,
-    abi: hyperVestingABI,
-    functionName: 'getUserStreamIds',
-    args: address ? [address] : undefined,
-  })
-
-  const { refetch: refetchTotalClaimable } = useReadContract({
-    address: contractAddress as Address,
-    abi: hyperVestingABI,
-    functionName: 'getTotalClaimable',
-    args: address ? [address] : undefined,
-  })
-
   const { data: activeStreamCount } = useReadContract({
     address: contractAddress as Address,
     abi: hyperVestingABI,
@@ -187,6 +116,13 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     abi: erc20ABI,
     functionName: 'decimals',
   })
+  
+  // Create stream hook after tokenDecimals is available
+  const { 
+    createStream, 
+    isAddStreamPending, 
+    isAddStreamSuccess 
+  } = useCreateStream(contractAddress, Number(tokenDecimals) || 18)
 
   const { data: tokenBalance, refetch: refetchTokenBalance } = useReadContract({
     address: tokenAddress as Address,
@@ -194,6 +130,15 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     functionName: 'balanceOf',
     args: contractAddress ? [contractAddress as Address] : undefined,
   })
+
+  // Token approval hook
+  const {
+    approveToken,
+    allowance: tokenAllowance,
+    // isApprovePending,
+    isApproveSuccess,
+    refetchAllowance
+  } = useTokenApproval(tokenAddress as Address, contractAddress as Address, address)
 
   // Write functions
   const { 
@@ -213,12 +158,6 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     isPending: isClaimBatchPending
   } = useWriteContract()
 
-  const { 
-    writeContract: addStream,
-    data: addStreamHash,
-    isPending: isAddStreamPending
-  } = useWriteContract()
-  
   const {
     writeContract: updateStream,
     data: updateStreamHash,
@@ -228,7 +167,6 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
   const {
     writeContract: cancelStreamContract,
     data: cancelStreamHash,
-    // isPending: isCancelStreamPending
   } = useWriteContract()
   
   const {
@@ -237,25 +175,14 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     isPending: isAddMultipleStreamsPending
   } = useWriteContract()
 
-
-  // const { 
-  //   writeContract: cancelStream,
-  // } = useWriteContract()
-
   const { 
     writeContract: depositTokens,
     data: depositHash,
     isPending: isDepositPending
   } = useWriteContract()
 
-  const { 
-    writeContract: approveToken,
-    data: approveHash,
-    isPending: isApprovePending
-  } = useWriteContract()
-
   // Transaction confirmations
-  const { isLoading: isClaimConfirming, isSuccess: isClaimSuccess } = useWaitForTransactionReceipt({
+  const { /* isLoading: isClaimConfirming, */ isSuccess: isClaimSuccess } = useWaitForTransactionReceipt({
     hash: claimHash,
   })
 
@@ -263,201 +190,70 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     hash: claimAllHash,
   })
 
-  const { isLoading: isAddStreamConfirming, isSuccess: isAddStreamSuccess } = useWaitForTransactionReceipt({
-    hash: addStreamHash,
-  })
-  
-  const { isLoading: isUpdateStreamConfirming, isSuccess: isUpdateStreamSuccess } = useWaitForTransactionReceipt({
+  const { /* isLoading: isUpdateStreamConfirming, */ isSuccess: isUpdateStreamSuccess } = useWaitForTransactionReceipt({
     hash: updateStreamHash,
   })
   
-  const { /* isLoading: isCancelStreamConfirming, */ isSuccess: isCancelStreamSuccess } = useWaitForTransactionReceipt({
+  const { isSuccess: isCancelStreamSuccess } = useWaitForTransactionReceipt({
     hash: cancelStreamHash,
   })
   
-  const { isLoading: isAddMultipleStreamsConfirming, isSuccess: isAddMultipleStreamsSuccess } = useWaitForTransactionReceipt({
+  const { /* isLoading: isAddMultipleStreamsConfirming, */ isSuccess: isAddMultipleStreamsSuccess } = useWaitForTransactionReceipt({
     hash: addMultipleStreamsHash,
   })
 
-  const { isLoading: isDepositConfirming, isSuccess: isDepositSuccess } = useWaitForTransactionReceipt({
+  const { /* isLoading: isDepositConfirming, */ isSuccess: isDepositSuccess } = useWaitForTransactionReceipt({
     hash: depositHash,
   })
 
-  const { isLoading: isApproveConfirming, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({
-    hash: approveHash,
-  })
-
-  // Check token allowance
-  const { data: tokenAllowance, refetch: refetchAllowance } = useReadContract({
-    address: tokenAddress as Address,
-    abi: erc20ABI,
-    functionName: 'allowance',
-    args: address && contractAddress ? [address as Address, contractAddress as Address] : undefined,
-  })
-
-  // Fetch all stream details
+  // Effects for success notifications
   React.useEffect(() => {
-    const fetchStreams = async () => {
-      if (!streamIds || !address || !publicClient) return
-
-      const streamDetails = await Promise.all(
-        (streamIds as bigint[]).map(async (streamId) => {
-          const info = await publicClient.readContract({
-            address: contractAddress as Address,
-            abi: hyperVestingABI,
-            functionName: 'getStreamInfo',
-            args: [address, streamId],
-          }) as {
-            totalAmount: bigint
-            totalClaimed: bigint
-            startTime: bigint
-            cliff: bigint
-            releaseRate: number
-            tgeRate: number
-            period: number
-            active: boolean
-            claimable: bigint
-          }
-
-          // The contract now returns a struct (tuple)
-          return {
-            streamId: Number(streamId),
-            totalAmount: info.totalAmount as bigint,
-            totalClaimed: info.totalClaimed as bigint,
-            startTime: info.startTime as bigint,
-            cliff: info.cliff as bigint,
-            releaseRate: Number(info.releaseRate),
-            tgeRate: Number(info.tgeRate),
-            period: Number(info.period),
-            active: info.active as boolean,
-            claimable: info.claimable as bigint,
-          }
-        })
-      )
-
-      setStreams(streamDetails)
-    }
-
-    fetchStreams()
-  }, [streamIds, address, publicClient, contractAddress])
-
-  // Fetch claim history
-  const fetchClaimHistory = React.useCallback(async () => {
-    if (!address || !publicClient) return
-
-    setIsLoadingHistory(true)
-    try {
-      const fromBlock = BigInt(1000000) // Adjust based on deployment block
-      const toBlock = 'latest' as const
-
-      const logs = await publicClient.getLogs({
-        address: contractAddress as Address,
-        event: parseAbiItem('event Claimed(address indexed user, uint256 indexed streamId, uint256 timestamp, uint256 claimedAmount, uint256 totalClaimed, uint256 totalAmount)'),
-        args: {
-          user: address,
-        },
-        fromBlock,
-        toBlock,
-      })
-
-      const history = logs.map(log => {
-        const args = log.args as {
-          timestamp?: bigint
-          streamId?: bigint
-          claimedAmount?: bigint
-          totalClaimed?: bigint
-          totalAmount?: bigint
-        }
-        return {
-          transactionHash: log.transactionHash,
-          timestamp: Number(args.timestamp || 0),
-          streamId: Number(args.streamId || 0),
-          claimedAmount: formatUnits(args.claimedAmount || BigInt(0), (tokenDecimals as number) || 18),
-          totalClaimed: formatUnits(args.totalClaimed || BigInt(0), (tokenDecimals as number) || 18),
-          totalAmount: formatUnits(args.totalAmount || BigInt(0), (tokenDecimals as number) || 18),
-          blockNumber: log.blockNumber,
-        }
-      }).reverse()
-
-      setClaimHistory(history)
-    } catch (error) {
-      console.error('Error fetching claim history:', error)
-    } finally {
-      setIsLoadingHistory(false)
-    }
-  }, [address, publicClient, contractAddress, tokenDecimals])
-
-  React.useEffect(() => {
-    if (address && publicClient) {
-      fetchClaimHistory()
-    }
-  }, [address, publicClient, fetchClaimHistory])
-
-  // Success handlers with real-time updates
-  React.useEffect(() => {
-    if (isClaimSuccess || isClaimAllSuccess) {
+    if (isClaimSuccess) {
       toast.success('Tokens claimed successfully!')
-      refetchStreamIds()
-      refetchTotalClaimable()
-      fetchClaimHistory()
-      
-      // Additional refetch after 2 seconds for real-time updates
-      const timer = setTimeout(() => {
-        refetchStreamIds() // This will trigger the streams useEffect to reload
-        refetchTotalClaimable()
-        fetchClaimHistory()
-      }, 2000)
-      
-      return () => clearTimeout(timer)
+      refetchStreams()
+      refetchHistory()
     }
-  }, [isClaimSuccess, isClaimAllSuccess, fetchClaimHistory, refetchStreamIds, refetchTotalClaimable])
+  }, [isClaimSuccess, refetchStreams, refetchHistory])
+
+  React.useEffect(() => {
+    if (isClaimAllSuccess) {
+      toast.success('All tokens claimed successfully!')
+      refetchStreams()
+      refetchHistory()
+    }
+  }, [isClaimAllSuccess, refetchStreams, refetchHistory])
 
   React.useEffect(() => {
     if (isAddStreamSuccess) {
       toast.success('Stream created successfully!')
-      setShowCreateStream(false)
-      refetchStreamIds()
+      refetchStreams()
       refetchTotalLocked()
-      // Reset form
-      setNewStreamUser('')
-      setNewStreamAmount('')
-      setNewStreamCliff('0')
-      setNewStreamTgeRate('10')
-      setNewStreamReleaseMonths('12')
-      setNewStreamPeriod('30')
     }
-  }, [isAddStreamSuccess, refetchStreamIds, refetchTotalLocked])
+  }, [isAddStreamSuccess, refetchStreams, refetchTotalLocked])
   
   React.useEffect(() => {
     if (isUpdateStreamSuccess) {
       toast.success('Stream updated successfully!')
-      setSelectedStreamForEdit(null)
-      setEditStreamAmount('')
-      setEditStreamReleaseRate('')
-      setEditStreamTgeRate('')
-      setEditStreamPeriod('')
-      refetchStreamIds()
+      refetchStreams()
       refetchTotalLocked()
     }
-  }, [isUpdateStreamSuccess, refetchStreamIds, refetchTotalLocked])
+  }, [isUpdateStreamSuccess, refetchStreams, refetchTotalLocked])
   
   React.useEffect(() => {
     if (isCancelStreamSuccess) {
       toast.success('Stream cancelled successfully!')
-      refetchStreamIds()
+      refetchStreams()
       refetchTotalLocked()
     }
-  }, [isCancelStreamSuccess, refetchStreamIds, refetchTotalLocked])
+  }, [isCancelStreamSuccess, refetchStreams, refetchTotalLocked])
   
   React.useEffect(() => {
     if (isAddMultipleStreamsSuccess) {
       toast.success('Batch streams created successfully!')
-      setBatchStreamData('')
-      setShowBatchCreate(false)
-      refetchStreamIds()
+      refetchStreams()
       refetchTotalLocked()
     }
-  }, [isAddMultipleStreamsSuccess, refetchStreamIds, refetchTotalLocked])
+  }, [isAddMultipleStreamsSuccess, refetchStreams, refetchTotalLocked])
 
   React.useEffect(() => {
     if (isDepositSuccess) {
@@ -475,7 +271,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       
       // Small delay to ensure allowance is updated
       setTimeout(() => {
-        const amountInWei = parseUnits(depositAmount, (tokenDecimals as number) || 18)
+        const amountInWei = parseAmountToWei(depositAmount, (tokenDecimals as number) || 18)
         depositTokens({
           address: contractAddress as Address,
           abi: hyperVestingABI,
@@ -533,39 +329,6 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }
 
-  const handleCreateStream = () => {
-    if (!newStreamUser || !newStreamAmount) {
-      toast.error('Please fill all required fields')
-      return
-    }
-
-    try {
-      const checksumAddress = getAddress(newStreamUser) as Address
-      const amountInWei = parseUnits(newStreamAmount, (tokenDecimals as number) || 18)
-      const cliffSeconds = BigInt(Number(newStreamCliff) * 30 * 24 * 60 * 60) // months to seconds
-      const tgeRateBps = Number(newStreamTgeRate) * 100 // percentage to basis points
-      const releaseRate = Math.floor(21600000000 / Number(newStreamReleaseMonths) * Number(newStreamPeriod) / 30)
-      const periodSeconds = Number(newStreamPeriod) * 24 * 60 * 60 // days to seconds
-
-      addStream({
-        address: contractAddress as Address,
-        abi: hyperVestingABI,
-        functionName: 'addStream',
-        args: [
-          checksumAddress,
-          amountInWei,
-          cliffSeconds,
-          releaseRate,
-          tgeRateBps,
-          periodSeconds,
-        ],
-      })
-    } catch (error) {
-      console.error('Create stream error:', error)
-      toast.error('Failed to create stream: ' + (error as Error).message)
-    }
-  }
-
   const handleCancelStream = (streamId: number) => {
     if (!confirm('Are you sure you want to cancel this stream? This action cannot be undone.')) {
       return
@@ -584,48 +347,44 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }
   
-  const handleUpdateStream = () => {
-    if (!selectedStreamForEdit) {
-      toast.error('No stream selected for editing')
+  const handleUpdateStream = (
+    streamId: number,
+    amount: string,
+    releaseMonths: string,
+    tgePercentage: string,
+    periodDays: string
+  ) => {
+    const stream = streams.find(s => s.streamId === streamId)
+    if (!stream) {
+      toast.error('Stream not found')
       return
     }
     
     try {
-      // Parse amounts with proper conversions
-      const amountInWei = editStreamAmount 
-        ? parseUnits(editStreamAmount, (tokenDecimals as number) || 18) 
-        : selectedStreamForEdit.totalAmount
+      const amountInWei = parseAmountToWei(amount, (tokenDecimals as number) || 18)
+      const releaseRate = monthsToReleaseRate(Number(releaseMonths))
+      const tgeRate = percentageToBasisPoints(Number(tgePercentage))
+      const period = periodDaysToSeconds(Number(periodDays))
       
-      // Convert release rate from months to the contract's expected format
-      // The contract expects releaseRate as uint40 with BASE_RATE = 21600000000
-      const releaseRate = editStreamReleaseRate 
-        ? Math.floor(Number(editStreamReleaseRate) * 2160000000000) // months to rate format
-        : selectedStreamForEdit.releaseRate
-      
-      // TGE rate is stored as basis points (0-10000)
-      const tgeRate = editStreamTgeRate 
-        ? Math.floor(Number(editStreamTgeRate) * 100) // percentage to basis points
-        : selectedStreamForEdit.tgeRate
-      
-      // Period in seconds
-      const period = editStreamPeriod 
-        ? Math.floor(Number(editStreamPeriod) * 86400) // days to seconds
-        : selectedStreamForEdit.period
-      
-      console.log('Updating stream:', {
-        streamId: selectedStreamForEdit.streamId,
-        amount: amountInWei.toString(),
+      // Validate the update
+      const isTgeStarted = Boolean(tgeTimestamp && Date.now() / 1000 >= Number(tgeTimestamp as bigint))
+      const validation = validateStreamUpdate(
+        amountInWei,
+        stream.totalClaimed,
         releaseRate,
         tgeRate,
-        period
-      })
+        period,
+        isTgeStarted,
+        stream.tgeRate
+      )
       
-      // Note: After TGE, tgeRate cannot be changed. The contract will revert if we try to change it.
-      // We should warn the user about this
-      if (tgeTimestamp && Date.now() / 1000 >= Number(tgeTimestamp)) {
-        if (editStreamTgeRate && Number(editStreamTgeRate) * 100 !== selectedStreamForEdit.tgeRate) {
-          toast.warning('TGE rate cannot be changed after TGE has started')
-        }
+      if (!validation.valid) {
+        toast.error(validation.error || 'Invalid stream parameters')
+        return
+      }
+      
+      if (validation.adjustedTgeRate !== undefined) {
+        toast.warning(validation.error || 'TGE rate adjusted')
       }
       
       updateStream({
@@ -633,155 +392,16 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
         abi: hyperVestingABI,
         functionName: 'updateStream',
         args: [
-          BigInt(selectedStreamForEdit.streamId),
+          BigInt(streamId),
           amountInWei,
           releaseRate,
-          tgeRate,
+          validation.adjustedTgeRate ?? tgeRate,
           period,
         ],
       })
     } catch (error) {
       console.error('Update stream error:', error)
       toast.error('Failed to update stream: ' + (error as Error).message)
-    }
-  }
-  
-  const handleUserLookup = async () => {
-    if (!userLookupAddress || !publicClient) {
-      toast.error('Please enter a valid address')
-      return
-    }
-    
-    try {
-      const checksumAddress = getAddress(userLookupAddress)
-      
-      // Get stream IDs for the user
-      const userStreamIds = await publicClient.readContract({
-        address: contractAddress as Address,
-        abi: hyperVestingABI,
-        functionName: 'getUserStreamIds',
-        args: [checksumAddress],
-      }) as bigint[]
-      
-      if (!userStreamIds || userStreamIds.length === 0) {
-        toast.info('No streams found for this address')
-        setLookupStreams([])
-        return
-      }
-      
-      // Fetch stream details
-      const streamDetails = await Promise.all(
-        userStreamIds.map(async (streamId) => {
-          const info = await publicClient.readContract({
-            address: contractAddress as Address,
-            abi: hyperVestingABI,
-            functionName: 'getStreamInfo',
-            args: [checksumAddress, streamId],
-          }) as {
-            totalAmount: bigint
-            totalClaimed: bigint
-            startTime: bigint
-            cliff: bigint
-            releaseRate: number
-            tgeRate: number
-            period: number
-            active: boolean
-            claimable: bigint
-          }
-          
-          return {
-            streamId: Number(streamId),
-            totalAmount: info.totalAmount as bigint,
-            totalClaimed: info.totalClaimed as bigint,
-            startTime: info.startTime as bigint,
-            cliff: info.cliff as bigint,
-            releaseRate: Number(info.releaseRate),
-            tgeRate: Number(info.tgeRate),
-            period: Number(info.period),
-            active: info.active as boolean,
-            claimable: info.claimable as bigint,
-          }
-        })
-      )
-      
-      setLookupStreams(streamDetails)
-      toast.success(`Found ${streamDetails.length} stream(s) for this address`)
-    } catch (error) {
-      console.error('User lookup error:', error)
-      toast.error('Failed to lookup user streams: ' + (error as Error).message)
-    }
-  }
-  
-  const handleBatchCreate = () => {
-    if (!batchStreamData) {
-      toast.error('Please enter batch stream data')
-      return
-    }
-    
-    try {
-      const lines = batchStreamData.split('\n').filter(line => line.trim())
-      if (lines.length === 0) {
-        toast.error('No valid data found')
-        return
-      }
-      
-      const users: Address[] = []
-      const amounts: bigint[] = []
-      const cliffs: bigint[] = []
-      const releaseRates: number[] = []
-      const tgeRates: number[] = []
-      const periods: number[] = []
-      
-      lines.forEach((line, index) => {
-        const parts = line.split(',').map(s => s.trim())
-        if (parts.length < 6) {
-          throw new Error(`Line ${index + 1} has insufficient data. Expected 6 values, got ${parts.length}`)
-        }
-        
-        const [address, amount, cliff, rate, tge, period] = parts
-        
-        // Validate address
-        users.push(getAddress(address))
-        
-        // Amount in wei
-        amounts.push(parseUnits(amount, (tokenDecimals as number) || 18))
-        
-        // Cliff in seconds (months * 30 days * 86400 seconds)
-        cliffs.push(BigInt(Math.floor(Number(cliff || 0) * 30 * 86400)))
-        
-        // Release rate: convert months to contract format
-        // The contract expects releaseRate as uint40 with BASE_RATE = 21600000000
-        releaseRates.push(Math.floor(Number(rate || 12) * 2160000000000))
-        
-        // TGE rate: percentage to basis points (0-10000)
-        const tgeValue = Math.floor(Number(tge || 10) * 100)
-        if (tgeValue > 10000) {
-          throw new Error(`Line ${index + 1}: TGE rate cannot exceed 100%`)
-        }
-        tgeRates.push(tgeValue)
-        
-        // Period: days to seconds
-        periods.push(Math.floor(Number(period || 30) * 86400))
-      })
-      
-      console.log('Creating batch streams:', {
-        users,
-        amounts: amounts.map(a => a.toString()),
-        cliffs: cliffs.map(c => c.toString()),
-        releaseRates,
-        tgeRates,
-        periods
-      })
-      
-      addMultipleStreams({
-        address: contractAddress as Address,
-        abi: hyperVestingABI,
-        functionName: 'addMultipleStreams',
-        args: [users, amounts, cliffs, releaseRates, tgeRates, periods],
-      })
-    } catch (error) {
-      console.error('Batch create error:', error)
-      toast.error('Failed to create batch streams: ' + (error as Error).message)
     }
   }
 
@@ -797,25 +417,19 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
 
     try {
-      const amountInWei = parseUnits(depositAmount, (tokenDecimals as number) || 18)
+      const amountInWei = parseAmountToWei(depositAmount, (tokenDecimals as number) || 18)
       console.log('Deposit amount in wei:', amountInWei.toString())
       console.log('Token address:', tokenAddress)
       console.log('Contract address:', contractAddress)
       
       // Check if we need approval
-      const currentAllowance = (tokenAllowance as bigint) || BigInt(0)
+      const currentAllowance = tokenAllowance || BigInt(0)
       console.log('Current allowance:', currentAllowance.toString())
       
       if (currentAllowance < amountInWei) {
         // Need approval first
-        toast.info('Approval required. Please approve the transaction.')
-        console.log('Requesting approval for:', amountInWei.toString())
-        approveToken({
-          address: tokenAddress as Address,
-          abi: erc20ABI,
-          functionName: 'approve',
-          args: [contractAddress as Address, amountInWei],
-        })
+        toast.info('Approval required. Please check your wallet for the approval request.')
+        await approveToken(amountInWei)
       } else {
         // Already approved, proceed with deposit
         console.log('Sufficient allowance, depositing tokens')
@@ -832,6 +446,29 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }
 
+  const handleBatchCreateStreams = (data: string) => {
+    try {
+      const entries = parseBatchStreamData(data, (tokenDecimals as number) || 18)
+      
+      const users = entries.map(e => e.address)
+      const amounts = entries.map(e => e.amount)
+      const cliffs = entries.map(e => e.cliff)
+      const releaseRates = entries.map(e => e.releaseRate)
+      const tgeRates = entries.map(e => e.tgeRate)
+      const periods = entries.map(e => e.period)
+      
+      addMultipleStreams({
+        address: contractAddress as Address,
+        abi: hyperVestingABI,
+        functionName: 'addMultipleStreams',
+        args: [users, amounts, cliffs, releaseRates, tgeRates, periods],
+      })
+    } catch (error) {
+      console.error('Batch create error:', error)
+      toast.error('Failed to create batch streams: ' + (error as Error).message)
+    }
+  }
+
   const copyAddress = () => {
     navigator.clipboard.writeText(contractAddress)
     setCopiedAddress(true)
@@ -840,30 +477,6 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
 
   const formatDate = (timestamp: number) => {
     return format(new Date(timestamp * 1000), 'PPP HH:mm')
-  }
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopiedAddress(true)
-      toast.success('Address copied to clipboard!')
-      setTimeout(() => setCopiedAddress(false), 2000)
-    } catch {
-      toast.error('Failed to copy address')
-    }
-  }
-
-  const getExplorerUrl = (type: 'address' | 'tx', hash: string) => {
-    const explorers: Record<number, string> = {
-      [arbitrum.id]: 'https://arbiscan.io',
-      [bscTestnet.id]: 'https://testnet.bscscan.com',
-      999: 'https://hyperevmscan.io', // HyperEVM
-    }
-    
-    const baseUrl = explorers[chainId] || ''
-    if (!baseUrl) return null
-    
-    return `${baseUrl}/${type}/${hash}`
   }
 
   const isOwner = Boolean(owner && address && (owner as string).toLowerCase() === address.toLowerCase())
@@ -906,52 +519,9 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
           </Card>
         ) : (
           <div className="space-y-6">
-            {/* Contract Info */}
-            <Card className="bg-black/50 backdrop-blur-xl border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center justify-between">
-                  <span>Vesting Contract</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={copyAddress}
-                    className="text-white/60 hover:text-white"
-                  >
-                    {copiedAddress ? (
-                      <CheckCircle className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <code className="text-primary font-mono text-sm">
-                    {contractAddress}
-                  </code>
-                  {getExplorerUrl('address', contractAddress) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      asChild
-                      className="text-white/60 hover:text-white"
-                    >
-                      <a
-                        href={getExplorerUrl('address', contractAddress)!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <Card className="bg-black/50 backdrop-blur-xl border-white/10">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -962,7 +532,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                   </div>
                   <h3 className="text-white/60 text-sm mb-1">Total Allocation</h3>
                   <p className="text-white text-2xl font-bold">
-                    {parseFloat(formatUnits(totalAllocation, (tokenDecimals as number) || 18)).toFixed(4)}
+                    {formatWeiToAmount(totalAllocation, (tokenDecimals as number) || 18)}
                   </p>
                   <p className="text-white/40 text-xs mt-1">{(tokenSymbol as string) || 'Tokens'}</p>
                 </CardContent>
@@ -975,7 +545,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                   </div>
                   <h3 className="text-white/60 text-sm mb-1">Total Claimed</h3>
                   <p className="text-white text-2xl font-bold">
-                    {parseFloat(formatUnits(totalClaimed, (tokenDecimals as number) || 18)).toFixed(4)}
+                    {formatWeiToAmount(totalClaimed, (tokenDecimals as number) || 18)}
                   </p>
                   <Progress 
                     value={totalAllocation > BigInt(0) ? Number((totalClaimed * BigInt(100)) / totalAllocation) : 0}
@@ -991,7 +561,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                   </div>
                   <h3 className="text-white/60 text-sm mb-1">Claimable Now</h3>
                   <p className="text-white text-2xl font-bold">
-                    {parseFloat(formatUnits(totalClaimableNow, (tokenDecimals as number) || 18)).toFixed(4)}
+                    {formatWeiToAmount(totalClaimableNow, (tokenDecimals as number) || 18)}
                   </p>
                   <p className="text-white/40 text-xs mt-1">{(tokenSymbol as string) || 'Tokens'}</p>
                 </CardContent>
@@ -1016,838 +586,307 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
             </div>
 
             {/* Main Tabs */}
-            <Tabs defaultValue="streams" className="space-y-4">
-              <TabsList className="bg-black/50 border border-white/10">
-                <TabsTrigger value="streams" className="data-[state=active]:bg-primary/20">
+            <Tabs defaultValue="streams" className="w-full">
+              <TabsList className="grid w-full grid-cols-4 bg-black/50">
+                <TabsTrigger value="streams" className="text-white data-[state=active]:bg-primary/20">
                   <Activity className="w-4 h-4 mr-2" />
-                  My Streams
+                  Active Streams
                 </TabsTrigger>
-                <TabsTrigger value="contract" className="data-[state=active]:bg-primary/20">
+                <TabsTrigger value="contract" className="text-white data-[state=active]:bg-primary/20">
                   <FileText className="w-4 h-4 mr-2" />
                   Contract Info
                 </TabsTrigger>
-                <TabsTrigger value="history" className="data-[state=active]:bg-primary/20">
-                  <Clock className="w-4 h-4 mr-2" />
+                <TabsTrigger value="history" className="text-white data-[state=active]:bg-primary/20">
+                  <Timer className="w-4 h-4 mr-2" />
                   Claim History
                 </TabsTrigger>
-                {(isOwner as boolean) && (
-                  <TabsTrigger value="admin" className="data-[state=active]:bg-primary/20">
+                {isOwner && (
+                  <TabsTrigger value="admin" className="text-white data-[state=active]:bg-primary/20">
                     <Shield className="w-4 h-4 mr-2" />
-                    Admin
+                    Admin Control
                   </TabsTrigger>
                 )}
               </TabsList>
 
-              {/* Streams Tab */}
-              <TabsContent value="streams" className="space-y-4">
-                {/* Claim Actions */}
-                {totalClaimableNow > BigInt(0) && (
-                  <Card className="bg-primary/10 border-primary/30">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-white font-semibold mb-1">
-                            Ready to Claim
-                          </h3>
-                          <p className="text-white/60 text-sm">
-                            You have {parseFloat(formatUnits(totalClaimableNow, (tokenDecimals as number) || 18)).toFixed(4)} {(tokenSymbol as string) || ''} available
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          {selectedStreamIds.length > 0 && (
-                            <Button
-                              onClick={handleClaimSelected}
-                              disabled={isClaimBatchPending}
-                              variant="outline"
-                              className="border-white/20 text-white hover:bg-white/10"
-                            >
-                              {isClaimBatchPending ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <>Claim Selected ({selectedStreamIds.length})</>
-                              )}
-                            </Button>
-                          )}
-                          <Button
-                            onClick={handleClaimAll}
-                            disabled={isClaimAllPending || isClaimAllConfirming}
-                            className="bg-primary hover:bg-primary/90"
-                          >
-                            {isClaimAllPending || isClaimAllConfirming ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              'Claim All'
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+              <TabsContent value="streams" className="space-y-6">
+                {/* Bulk Actions */}
+                {streams.filter(s => s.active && s.claimable > BigInt(0)).length > 0 && (
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleClaimAll}
+                      disabled={isClaimAllPending || isClaimAllConfirming}
+                      className="bg-green-500 hover:bg-green-600"
+                    >
+                      {(isClaimAllPending || isClaimAllConfirming) ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : null}
+                      Claim All Available
+                    </Button>
+                    
+                    {selectedStreamIds.length > 0 && (
+                      <Button
+                        onClick={handleClaimSelected}
+                        disabled={isClaimBatchPending}
+                        variant="outline"
+                        className="border-white/10 text-white hover:bg-white/10"
+                      >
+                        {isClaimBatchPending ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : null}
+                        Claim Selected ({selectedStreamIds.length})
+                      </Button>
+                    )}
+                  </div>
                 )}
 
-                {/* Streams List */}
-                <div className="space-y-4">
+                {/* Stream Cards */}
+                <div className="grid gap-4">
                   {streams.length === 0 ? (
                     <Card className="bg-black/50 backdrop-blur-xl border-white/10">
-                      <CardContent className="flex flex-col items-center justify-center py-12">
-                        <Info className="w-16 h-16 text-white/30 mb-4" />
-                        <p className="text-white/60 text-center">
-                          No vesting streams found for your address
-                        </p>
+                      <CardContent className="py-12 text-center">
+                        <p className="text-white/60">No vesting streams found</p>
                       </CardContent>
                     </Card>
                   ) : (
                     streams.map((stream) => (
-                      <Card key={stream.streamId} className="bg-black/50 backdrop-blur-xl border-white/10">
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <Badge variant={stream.active ? "default" : "secondary"}>
-                                Stream #{stream.streamId}
-                              </Badge>
-                              {stream.active ? (
-                                <Badge variant="outline" className="border-green-400/30 text-green-400">
-                                  <PlayCircle className="w-3 h-3 mr-1" />
-                                  Active
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="border-red-400/30 text-red-400">
-                                  <PauseCircle className="w-3 h-3 mr-1" />
-                                  Inactive
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedStreamIds.includes(stream.streamId)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedStreamIds([...selectedStreamIds, stream.streamId])
-                                  } else {
-                                    setSelectedStreamIds(selectedStreamIds.filter(id => id !== stream.streamId))
-                                  }
-                                }}
-                                className="w-4 h-4"
-                                disabled={!stream.active || stream.claimable === BigInt(0)}
-                              />
-                              {stream.active && stream.claimable > BigInt(0) && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleClaimStream(stream.streamId)}
-                                  disabled={isClaimPending || isClaimConfirming}
-                                >
-                                  {isClaimPending || isClaimConfirming ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    'Claim'
-                                  )}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div>
-                              <p className="text-white/60 text-sm">Total Amount</p>
-                              <p className="text-white font-medium">
-                                {parseFloat(formatUnits(stream.totalAmount, (tokenDecimals as number) || 18)).toFixed(4)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-white/60 text-sm">Claimed</p>
-                              <p className="text-white font-medium">
-                                {parseFloat(formatUnits(stream.totalClaimed, (tokenDecimals as number) || 18)).toFixed(4)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-white/60 text-sm">Claimable</p>
-                              <p className="text-green-400 font-medium">
-                                {parseFloat(formatUnits(stream.claimable, (tokenDecimals as number) || 18)).toFixed(4)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-white/60 text-sm">Progress</p>
-                              <div className="flex items-center gap-2">
-                                <Progress 
-                                  value={stream.totalAmount > BigInt(0) ? Number((stream.totalClaimed * BigInt(100)) / stream.totalAmount) : 0}
-                                  className="flex-1"
-                                />
-                                <span className="text-white text-sm">
-                                  {stream.totalAmount > BigInt(0) ? Math.floor(Number((stream.totalClaimed * BigInt(100)) / stream.totalAmount)) : 0}%
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <Separator className="bg-white/10" />
-
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <p className="text-white/60">TGE Release</p>
-                              <p className="text-white">{stream.tgeRate / 100}%</p>
-                            </div>
-                            <div>
-                              <p className="text-white/60">Cliff</p>
-                              <p className="text-white">{Number(stream.cliff) / (30 * 24 * 60 * 60)} months</p>
-                            </div>
-                            <div>
-                              <p className="text-white/60">Vesting Period</p>
-                              <p className="text-white">{stream.period / (24 * 60 * 60)} days</p>
-                            </div>
-                            <div>
-                              <p className="text-white/60">Start Time</p>
-                              <p className="text-white">{formatDate(Number(stream.startTime))}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <StreamCard
+                        key={stream.streamId}
+                        stream={stream}
+                        tokenSymbol={(tokenSymbol as string) || 'Tokens'}
+                        tokenDecimals={(tokenDecimals as number) || 18}
+                        isOwner={isOwner}
+                        tgeTimestamp={tgeTimestamp as bigint}
+                        isSelected={selectedStreamIds.includes(stream.streamId)}
+                        onSelectionChange={(streamId, selected) => {
+                          if (selected) {
+                            setSelectedStreamIds(prev => [...prev, streamId])
+                          } else {
+                            setSelectedStreamIds(prev => prev.filter(id => id !== streamId))
+                          }
+                        }}
+                        onClaim={handleClaimStream}
+                        onCancel={handleCancelStream}
+                        onUpdate={handleUpdateStream}
+                        isClaimPending={isClaimPending}
+                        isUpdatePending={isUpdateStreamPending}
+                      />
                     ))
                   )}
                 </div>
               </TabsContent>
 
-              {/* Contract Info Tab */}
-              <TabsContent value="contract">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                >
+              <TabsContent value="history" className="space-y-4">
+                {claimHistory.length === 0 ? (
                   <Card className="bg-black/50 backdrop-blur-xl border-white/10">
-                    <CardHeader>
-                      <CardTitle className="text-white flex items-center gap-2">
-                        <Info className="w-5 h-5 text-primary" />
-                        Contract Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
-                            <span className="text-white/70">Vesting Contract</span>
-                            <div className="flex items-center gap-2">
-                              <code className="bg-white/10 px-2 py-1 rounded text-sm font-mono text-white">
-                                {contractAddress.slice(0, 6)}...{contractAddress.slice(-4)}
-                              </code>
+                    <CardContent className="py-12 text-center">
+                      <p className="text-white/60">No claim history found</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {claimHistory.map((item, index) => (
+                      <Card key={index} className="bg-black/50 backdrop-blur-xl border-white/10">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-white font-medium">
+                                Stream #{item.streamId}
+                              </p>
+                              <p className="text-white/60 text-sm">
+                                {formatDate(item.timestamp)}
+                              </p>
+                              <p className="text-green-400 text-sm mt-1">
+                                +{formatWeiToAmount(BigInt(item.claimedAmount), (tokenDecimals as number) || 18)} {(tokenSymbol as string) || 'Tokens'}
+                              </p>
+                            </div>
+                            {getExplorerUrl(chainId, 'tx', item.transactionHash) && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => copyToClipboard(contractAddress)}
-                                className="p-1 h-auto text-white/70 hover:text-white"
+                                asChild
+                                className="text-white/60 hover:text-white"
                               >
-                                {copiedAddress ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                              </Button>
-                              {getExplorerUrl('address', contractAddress) && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  asChild
-                                  className="p-1 h-auto text-white/70 hover:text-white"
+                                <a
+                                  href={getExplorerUrl(chainId, 'tx', item.transactionHash)!}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                 >
-                                  <a href={getExplorerUrl('address', contractAddress)!} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="w-4 h-4" />
-                                  </a>
-                                </Button>
-                              )}
-                            </div>
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                              </Button>
+                            )}
                           </div>
-
-                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
-                            <span className="text-white/70">Token Address</span>
-                            <div className="flex items-center gap-2">
-                              {tokenAddress ? (
-                                <>
-                                  <code className="bg-white/10 px-2 py-1 rounded text-sm font-mono text-white">
-                                    {(tokenAddress as string).slice(0, 6)}...{(tokenAddress as string).slice(-4)}
-                                  </code>
-                                  {getExplorerUrl('address', tokenAddress as string) && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      asChild
-                                      className="p-1 h-auto text-white/70 hover:text-white"
-                                    >
-                                      <a href={getExplorerUrl('address', tokenAddress as string)!} target="_blank" rel="noopener noreferrer">
-                                        <ExternalLink className="w-4 h-4" />
-                                      </a>
-                                    </Button>
-                                  )}
-                                </>
-                              ) : (
-                                <span className="text-white/50">Not set</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
-                            <span className="text-white/70">Contract Owner</span>
-                            <div className="flex items-center gap-2">
-                              {owner ? (
-                                <>
-                                  <code className="bg-white/10 px-2 py-1 rounded text-sm font-mono text-white">
-                                    {(owner as string).slice(0, 6)}...{(owner as string).slice(-4)}
-                                  </code>
-                                  {isOwner && (
-                                    <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30">
-                                      You
-                                    </Badge>
-                                  )}
-                                </>
-                              ) : (
-                                <span className="text-white/50">Not set</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
-                            <span className="text-white/70 flex items-center gap-2">
-                              <Calendar className="w-4 h-4" />
-                              TGE Date
-                            </span>
-                            <span className="text-white font-medium">
-                              {tgeTimestamp ? formatDate(Number(tgeTimestamp)) : 'Not set'}
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
-                            <span className="text-white/70 flex items-center gap-2">
-                              <TrendingUp className="w-4 h-4" />
-                              Total Locked
-                            </span>
-                            <span className="text-white font-medium">
-                              {totalLocked ? formatUnits(totalLocked as bigint, (tokenDecimals as number) || 18) : '0'} tokens
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg">
-                            <span className="text-white/70 flex items-center gap-2">
-                              <Lock className="w-4 h-4" />
-                              Max Supply
-                            </span>
-                            <span className="text-white font-medium">
-                              {maxTokensToLock ? formatUnits(maxTokensToLock as bigint, (tokenDecimals as number) || 18) : '0'} tokens
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <Separator className="bg-white/10" />
-
-                      <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                        <h4 className="text-white font-medium mb-2 flex items-center gap-2">
-                          <Info className="w-4 h-4 text-primary" />
-                          Contract Status
-                        </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
-                          <div>
-                            <p className="text-white/50 text-sm">Network</p>
-                            <p className="text-white font-medium">{chainId === 999 ? 'HyperEVM' : chainId === 42161 ? 'Arbitrum' : 'BSC Testnet'}</p>
-                          </div>
-                          <div>
-                            <p className="text-white/50 text-sm">Active Streams</p>
-                            <p className="text-white font-medium">{streams.filter(s => s.active).length}</p>
-                          </div>
-                          <div>
-                            <p className="text-white/50 text-sm">Total Streams</p>
-                            <p className="text-white font-medium">{nextStreamId ? Number(nextStreamId) - 1 : 0}</p>
-                          </div>
-                          <div>
-                            <p className="text-white/50 text-sm">Your Streams</p>
-                            <p className="text-white font-medium">{streams.length}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </TabsContent>
 
-              <TabsContent value="history">
+              <TabsContent value="contract" className="space-y-4">
                 <Card className="bg-black/50 backdrop-blur-xl border-white/10">
                   <CardHeader>
-                    <CardTitle className="text-white">Claim History</CardTitle>
+                    <CardTitle className="text-white">Contract Information</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    {isLoadingHistory ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <CardContent className="space-y-6">
+                    {/* Contract Address */}
+                    <div>
+                      <Label className="text-white/60 text-sm">Contract Address</Label>
+                      <div className="flex items-center justify-between mt-2 p-3 bg-white/5 rounded-lg">
+                        <code className="text-primary font-mono text-sm">
+                          {contractAddress}
+                        </code>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={copyAddress}
+                            className="text-white/60 hover:text-white"
+                          >
+                            {copiedAddress ? (
+                              <CheckCircle className="w-4 h-4 text-green-400" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </Button>
+                          {getExplorerUrl(chainId, 'address', contractAddress) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              asChild
+                              className="text-white/60 hover:text-white"
+                            >
+                              <a
+                                href={getExplorerUrl(chainId, 'address', contractAddress)!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    ) : claimHistory.length > 0 ? (
-                      <div className="space-y-3">
-                        {claimHistory.map((claim) => (
-                          <div key={claim.transactionHash} className="p-4 bg-white/5 rounded-lg border border-white/10">
-                            <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <p className="text-white font-medium mb-1">
-                                  Stream #{claim.streamId} - Claimed {parseFloat(claim.claimedAmount).toFixed(4)} tokens
-                                </p>
-                                <p className="text-white/50 text-sm">
-                                  {formatDate(claim.timestamp)}
-                                </p>
-                              </div>
-                              <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
-                                Successful
-                              </Badge>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-white/70">Transaction</span>
-                              <div className="flex items-center gap-1">
-                                <code className="text-primary text-xs">
-                                  {claim.transactionHash.slice(0, 6)}...{claim.transactionHash.slice(-4)}
-                                </code>
-                                {getExplorerUrl('tx', claim.transactionHash) && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    asChild
-                                    className="h-auto p-0"
-                                  >
-                                    <a
-                                      href={getExplorerUrl('tx', claim.transactionHash)!}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <ExternalLink className="w-3 h-3 text-white/60 hover:text-white" />
-                                    </a>
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                    </div>
+
+                    {/* Token Address */}
+                    <div>
+                      <Label className="text-white/60 text-sm">Token Address</Label>
+                      <div className="flex items-center justify-between mt-2 p-3 bg-white/5 rounded-lg">
+                        <code className="text-primary font-mono text-sm">
+                          {(tokenAddress as string) || 'Loading...'}
+                        </code>
+                        {tokenAddress && getExplorerUrl(chainId, 'address', tokenAddress as string) ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            asChild
+                            className="text-white/60 hover:text-white"
+                          >
+                            <a
+                              href={getExplorerUrl(chainId, 'address', tokenAddress as string)!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </Button>
+                        ) : null}
                       </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Info className="w-12 h-12 text-white/30 mx-auto mb-3" />
-                        <p className="text-white/60">No claim history found</p>
+                    </div>
+
+                    {/* Contract Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-white/5 rounded-lg">
+                        <p className="text-white/60 text-sm mb-1">Token Symbol</p>
+                        <p className="text-white text-xl font-bold">
+                          {(tokenSymbol as string) || 'Loading...'}
+                        </p>
                       </div>
-                    )}
+                      <div className="p-4 bg-white/5 rounded-lg">
+                        <p className="text-white/60 text-sm mb-1">Token Decimals</p>
+                        <p className="text-white text-xl font-bold">
+                          {tokenDecimals?.toString() || 'Loading...'}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-white/5 rounded-lg">
+                        <p className="text-white/60 text-sm mb-1">Contract Balance</p>
+                        <p className="text-white text-xl font-bold">
+                          {tokenBalance ? formatWeiToAmount(tokenBalance as bigint, (tokenDecimals as number) || 18) : '0'}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-white/5 rounded-lg">
+                        <p className="text-white/60 text-sm mb-1">Total Locked</p>
+                        <p className="text-white text-xl font-bold">
+                          {totalLocked ? formatWeiToAmount(totalLocked as bigint, (tokenDecimals as number) || 18) : '0'}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-white/5 rounded-lg">
+                        <p className="text-white/60 text-sm mb-1">Max Supply</p>
+                        <p className="text-white text-xl font-bold">
+                          {maxTokensToLock ? formatWeiToAmount(maxTokensToLock as bigint, (tokenDecimals as number) || 18) : '0'}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-white/5 rounded-lg">
+                        <p className="text-white/60 text-sm mb-1">Owner</p>
+                        <p className="text-primary text-xs font-mono break-all">
+                          {(owner as string) || 'Loading...'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* TGE Information */}
+                    <div className="p-4 bg-primary/10 rounded-lg">
+                      <h4 className="text-white font-semibold mb-3">TGE Information</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-white/60">TGE Date:</span>
+                          <span className="text-white">
+                            {tgeTimestamp ? formatDate(Number(tgeTimestamp as bigint)) : 'Not set'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-white/60">Status:</span>
+                          {tgeTimestamp && Number(tgeTimestamp as bigint) > Date.now() / 1000 ? (
+                            <Badge variant="outline" className="border-blue-400/30 text-blue-400">
+                              Upcoming
+                            </Badge>
+                          ) : tgeTimestamp ? (
+                            <Badge variant="outline" className="border-green-400/30 text-green-400">
+                              Started
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-gray-400/30 text-gray-400">
+                              Not Set
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* Admin Tab */}
               {isOwner && (
-                <TabsContent value="admin" className="space-y-6">
-                  <Alert className="bg-primary/10 border-primary/30">
-                    <AlertCircle className="h-4 w-4 text-primary" />
-                    <AlertTitle className="text-white">Admin Access</AlertTitle>
-                    <AlertDescription className="text-white/70">
-                      You have owner privileges for this vesting contract. Use these tools to manage streams.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  {tgeTimestamp ? (
-                    <Alert className={Date.now() / 1000 >= Number(tgeTimestamp as bigint) ? "bg-yellow-500/10 border-yellow-500/30" : "bg-blue-500/10 border-blue-500/30"}>
-                      <Info className="h-4 w-4" />
-                      <AlertTitle className="text-white">TGE Status</AlertTitle>
-                      <AlertDescription className="text-white/70">
-                        {Date.now() / 1000 >= Number(tgeTimestamp as bigint) ? (
-                          <>
-                            <strong>TGE has started</strong> on {formatDate(Number(tgeTimestamp as bigint))}.
-                            <br />
-                            ⚠️ Note: TGE rates cannot be modified for any streams after TGE has started.
-                          </>
-                        ) : (
-                          <>
-                            <strong>TGE will start</strong> on {formatDate(Number(tgeTimestamp as bigint))}.
-                            <br />
-                            ✅ All stream parameters can still be modified before TGE starts.
-                          </>
-                        )}
-                      </AlertDescription>
-                    </Alert>
-                  ) : null}
-
-                  {/* Contract Stats */}
-                  <Card className="bg-black/50 backdrop-blur-xl border-white/10">
-                    <CardHeader>
-                      <CardTitle className="text-white">Contract Statistics</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 bg-white/5 rounded-lg">
-                          <p className="text-white/60 text-sm mb-1">Total Locked</p>
-                          <p className="text-white text-xl font-bold">
-                            {parseFloat(formatUnits((totalLocked as bigint) || BigInt(0), (tokenDecimals as number) || 18)).toFixed(4)}
-                          </p>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded-lg">
-                          <p className="text-white/60 text-sm mb-1">Max Supply</p>
-                          <p className="text-white text-xl font-bold">
-                            {parseFloat(formatUnits((maxTokensToLock as bigint) || BigInt(0), (tokenDecimals as number) || 18)).toFixed(4)}
-                          </p>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded-lg">
-                          <p className="text-white/60 text-sm mb-1">Contract Balance</p>
-                          <p className="text-white text-xl font-bold">
-                            {parseFloat(formatUnits((tokenBalance as bigint) || BigInt(0), (tokenDecimals as number) || 18)).toFixed(4)}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Deposit Tokens */}
-                  <Card className="bg-black/50 backdrop-blur-xl border-white/10">
-                    <CardHeader>
-                      <CardTitle className="text-white flex items-center gap-2">
-                        <Coins className="w-5 h-5 text-primary" />
-                        Deposit Tokens
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-white/60 text-sm">
-                        Transfer tokens from your wallet to the vesting contract for distribution
-                      </p>
-                      <div className="flex gap-4">
-                        <div className="flex-1">
-                          <Label htmlFor="deposit-amount" className="text-white/70">Amount to Deposit</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              id="deposit-amount"
-                              placeholder="Enter amount"
-                              value={depositAmount}
-                              onChange={(e) => setDepositAmount(e.target.value)}
-                              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                            />
-                            <div className="flex items-center px-3 bg-white/5 border border-white/10 rounded-md">
-                              <span className="text-white/70 text-sm whitespace-nowrap">
-                                {(tokenSymbol as string) || 'Tokens'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          onClick={handleDepositTokens}
-                          disabled={!depositAmount || isDepositPending || isDepositConfirming || isApprovePending || isApproveConfirming}
-                          className="self-end"
-                        >
-                          {isApprovePending || isApproveConfirming ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Approving...
-                            </>
-                          ) : isDepositPending || isDepositConfirming ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Depositing...
-                            </>
-                          ) : (
-                            (() => {
-                              if (!depositAmount) return 'Deposit Tokens'
-                              try {
-                                const amountInWei = parseUnits(depositAmount, (tokenDecimals as number) || 18)
-                                const currentAllowance = (tokenAllowance as bigint) || BigInt(0)
-                                return currentAllowance < amountInWei ? 'Approve & Deposit' : 'Deposit Tokens'
-                              } catch {
-                                return 'Deposit Tokens'
-                              }
-                            })()
-                          )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Create Stream */}
-                  <Card className="bg-black/50 backdrop-blur-xl border-white/10">
-                    <CardHeader>
-                      <CardTitle className="text-white flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          <Plus className="w-5 h-5 text-primary" />
-                          Create New Stream
-                        </span>
-                        <Button
-                          onClick={() => setShowCreateStream(!showCreateStream)}
-                          variant="outline"
-                          size="sm"
-                          className="border-white/20 text-white hover:bg-white/10"
-                        >
-                          {showCreateStream ? 'Cancel' : 'Create Stream'}
-                        </Button>
-                      </CardTitle>
-                    </CardHeader>
-                    {showCreateStream && (
-                      <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-white/70">Recipient Address</Label>
-                            <Input
-                              placeholder="0x..."
-                              value={newStreamUser}
-                              onChange={(e) => setNewStreamUser(e.target.value)}
-                              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-white/70">Amount</Label>
-                            <Input
-                              placeholder="1000"
-                              value={newStreamAmount}
-                              onChange={(e) => setNewStreamAmount(e.target.value)}
-                              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-white/70">Cliff (months)</Label>
-                            <Input
-                              type="number"
-                              placeholder="0"
-                              value={newStreamCliff}
-                              onChange={(e) => setNewStreamCliff(e.target.value)}
-                              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-white/70">TGE Release (%)</Label>
-                            <Input
-                              type="number"
-                              placeholder="10"
-                              value={newStreamTgeRate}
-                              onChange={(e) => setNewStreamTgeRate(e.target.value)}
-                              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-white/70">Release Period (months)</Label>
-                            <Input
-                              type="number"
-                              placeholder="12"
-                              value={newStreamReleaseMonths}
-                              onChange={(e) => setNewStreamReleaseMonths(e.target.value)}
-                              className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-white/70">Vesting Period (days)</Label>
-                            <Select value={newStreamPeriod} onValueChange={setNewStreamPeriod}>
-                              <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1">Daily</SelectItem>
-                                <SelectItem value="30">Monthly</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <Button
-                          onClick={handleCreateStream}
-                          disabled={isAddStreamPending || isAddStreamConfirming}
-                          className="w-full"
-                        >
-                          {isAddStreamPending || isAddStreamConfirming ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            'Create Stream'
-                          )}
-                        </Button>
-                      </CardContent>
-                    )}
-                  </Card>
-
-                  {/* User Stream Lookup */}
-                  <Card className="bg-black/50 backdrop-blur-xl border-white/10">
-                    <CardHeader>
-                      <CardTitle className="text-white flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          <Users className="w-5 h-5 text-primary" />
-                          User Stream Lookup
-                        </span>
-                        <Button
-                          onClick={() => setShowUserLookup(!showUserLookup)}
-                          variant="outline"
-                          size="sm"
-                          className="border-white/20 text-white hover:bg-white/10"
-                        >
-                          {showUserLookup ? 'Hide' : 'Lookup'}
-                        </Button>
-                      </CardTitle>
-                    </CardHeader>
-                    {showUserLookup && (
-                      <CardContent className="space-y-4">
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Enter user address (0x...)"
-                            value={userLookupAddress}
-                            onChange={(e) => setUserLookupAddress(e.target.value)}
-                            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
-                          />
-                          <Button
-                            onClick={handleUserLookup}
-                            className="whitespace-nowrap"
-                          >
-                            Search Streams
-                          </Button>
-                        </div>
-                        
-                        {lookupStreams.length > 0 && (
-                          <div className="space-y-3 mt-4">
-                            <h4 className="text-white font-medium">Found {lookupStreams.length} stream(s)</h4>
-                            {lookupStreams.map((stream) => (
-                              <div key={stream.streamId} className="p-4 bg-white/5 rounded-lg border border-white/10">
-                                <div className="flex justify-between items-start mb-3">
-                                  <div>
-                                    <p className="text-white font-medium">Stream #{stream.streamId}</p>
-                                    <p className="text-white/50 text-sm">
-                                      {formatUnits(stream.totalAmount, (tokenDecimals as number) || 18)} tokens
-                                    </p>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      onClick={() => {
-                                        setSelectedStreamForEdit(stream)
-                                        setEditStreamAmount(formatUnits(stream.totalAmount, (tokenDecimals as number) || 18))
-                                        setEditStreamReleaseRate(String(stream.releaseRate / 2160000000000))
-                                        setEditStreamTgeRate(String(stream.tgeRate / 100))
-                                        setEditStreamPeriod(String(stream.period / 86400))
-                                      }}
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-white border-white/20 hover:bg-white/10"
-                                    >
-                                      Edit
-                                    </Button>
-                                    <Button
-                                      onClick={() => handleCancelStream(stream.streamId)}
-                                      size="sm"
-                                      variant="destructive"
-                                      disabled={!stream.active}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                  <span className="text-white/70">Status:</span>
-                                  <span className="text-white">{stream.active ? 'Active' : 'Cancelled'}</span>
-                                  <span className="text-white/70">Claimed:</span>
-                                  <span className="text-white">{formatUnits(stream.totalClaimed, (tokenDecimals as number) || 18)}</span>
-                                  <span className="text-white/70">Claimable:</span>
-                                  <span className="text-white">{formatUnits(stream.claimable, (tokenDecimals as number) || 18)}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        
-                        {selectedStreamForEdit && (
-                          <div className="mt-4 p-4 bg-primary/10 rounded-lg border border-primary/30">
-                            <h4 className="text-white font-medium mb-3">Edit Stream #{selectedStreamForEdit.streamId}</h4>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <Label className="text-white/70">Amount</Label>
-                                <Input
-                                  value={editStreamAmount}
-                                  onChange={(e) => setEditStreamAmount(e.target.value)}
-                                  className="bg-white/5 border-white/10 text-white"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-white/70">Release (months)</Label>
-                                <Input
-                                  value={editStreamReleaseRate}
-                                  onChange={(e) => setEditStreamReleaseRate(e.target.value)}
-                                  className="bg-white/5 border-white/10 text-white"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-white/70">TGE %</Label>
-                                <Input
-                                  value={editStreamTgeRate}
-                                  onChange={(e) => setEditStreamTgeRate(e.target.value)}
-                                  className="bg-white/5 border-white/10 text-white"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-white/70">Period (days)</Label>
-                                <Input
-                                  value={editStreamPeriod}
-                                  onChange={(e) => setEditStreamPeriod(e.target.value)}
-                                  className="bg-white/5 border-white/10 text-white"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex gap-2 mt-3">
-                              <Button
-                                onClick={handleUpdateStream}
-                                disabled={isUpdateStreamPending || isUpdateStreamConfirming}
-                              >
-                                {isUpdateStreamPending || isUpdateStreamConfirming ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  'Update Stream'
-                                )}
-                              </Button>
-                              <Button
-                                onClick={() => setSelectedStreamForEdit(null)}
-                                variant="outline"
-                                className="text-white border-white/20"
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    )}
-                  </Card>
-
-                  {/* Batch Stream Creation */}
-                  <Card className="bg-black/50 backdrop-blur-xl border-white/10">
-                    <CardHeader>
-                      <CardTitle className="text-white flex items-center justify-between">
-                        <span className="flex items-center gap-2">
-                          <Upload className="w-5 h-5 text-primary" />
-                          Batch Stream Creation
-                        </span>
-                        <Button
-                          onClick={() => setShowBatchCreate(!showBatchCreate)}
-                          variant="outline"
-                          size="sm"
-                          className="border-white/20 text-white hover:bg-white/10"
-                        >
-                          {showBatchCreate ? 'Hide' : 'Create Batch'}
-                        </Button>
-                      </CardTitle>
-                    </CardHeader>
-                    {showBatchCreate && (
-                      <CardContent className="space-y-4">
-                        <Alert>
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Batch Format</AlertTitle>
-                          <AlertDescription>
-                            Enter one stream per line: address,amount,cliff_months,release_months,tge_percent,period_days
-                            <br />
-                            Example: 0x123...,1000,0,12,10,30
-                          </AlertDescription>
-                        </Alert>
-                        <Textarea
-                          placeholder="Enter batch stream data..."
-                          value={batchStreamData}
-                          onChange={(e) => setBatchStreamData(e.target.value)}
-                          rows={6}
-                          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 font-mono text-sm"
-                        />
-                        <Button
-                          onClick={handleBatchCreate}
-                          disabled={isAddMultipleStreamsPending || isAddMultipleStreamsConfirming}
-                          className="w-full"
-                        >
-                          {isAddMultipleStreamsPending || isAddMultipleStreamsConfirming ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            `Create ${batchStreamData.split('\n').filter(l => l.trim()).length} Streams`
-                          )}
-                        </Button>
-                      </CardContent>
-                    )}
-                  </Card>
+                <TabsContent value="admin" className="space-y-4">
+                  <AdminPanel
+                    tokenDecimals={(tokenDecimals as number) || 18}
+                    tokenSymbol={(tokenSymbol as string) || 'Tokens'}
+                    tokenBalance={tokenBalance as bigint}
+                    totalLocked={totalLocked as bigint}
+                    maxTokensToLock={maxTokensToLock as bigint}
+                    isOwner={isOwner}
+                    tgeTimestamp={tgeTimestamp as bigint}
+                    onDepositTokens={handleDepositTokens}
+                    onCreateStream={createStream}
+                    onBatchCreateStreams={handleBatchCreateStreams}
+                    onSearchUserStreams={searchUserStreams}
+                    searchResults={searchResults}
+                    isSearching={isSearching}
+                    isDepositPending={isDepositPending}
+                    isAddStreamPending={isAddStreamPending}
+                    isAddMultipleStreamsPending={isAddMultipleStreamsPending}
+                  />
                 </TabsContent>
               )}
             </Tabs>
