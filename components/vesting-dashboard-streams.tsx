@@ -33,7 +33,9 @@ import {
   Lock,
   ArrowRight,
   FileText,
-  Activity
+  Activity,
+  Users,
+  Upload
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -43,6 +45,7 @@ import { motion } from "framer-motion"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import {
   Select,
@@ -93,7 +96,13 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
   
   // Admin state
   const [showCreateStream, setShowCreateStream] = React.useState(false)
+  const [showBatchCreate, setShowBatchCreate] = React.useState(false)
+  const [showUserLookup, setShowUserLookup] = React.useState(false)
   const [depositAmount, setDepositAmount] = React.useState('')
+  const [userLookupAddress, setUserLookupAddress] = React.useState('')
+  const [lookupStreams, setLookupStreams] = React.useState<Stream[]>([])
+  const [selectedStreamForEdit, setSelectedStreamForEdit] = React.useState<Stream | null>(null)
+  const [batchStreamData, setBatchStreamData] = React.useState('')
   
   // Stream creation state
   const [newStreamUser, setNewStreamUser] = React.useState('')
@@ -102,6 +111,12 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
   const [newStreamTgeRate, setNewStreamTgeRate] = React.useState('10')
   const [newStreamReleaseMonths, setNewStreamReleaseMonths] = React.useState('12')
   const [newStreamPeriod, setNewStreamPeriod] = React.useState('30')
+  
+  // Stream edit state
+  const [editStreamAmount, setEditStreamAmount] = React.useState('')
+  const [editStreamReleaseRate, setEditStreamReleaseRate] = React.useState('')
+  const [editStreamTgeRate, setEditStreamTgeRate] = React.useState('')
+  const [editStreamPeriod, setEditStreamPeriod] = React.useState('')
 
   // Contract reads
   const { data: tokenAddress } = useReadContract({
@@ -204,6 +219,24 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     data: addStreamHash,
     isPending: isAddStreamPending
   } = useWriteContract()
+  
+  const {
+    writeContract: updateStream,
+    data: updateStreamHash,
+    isPending: isUpdateStreamPending
+  } = useWriteContract()
+  
+  const {
+    writeContract: cancelStreamContract,
+    data: cancelStreamHash,
+    isPending: isCancelStreamPending
+  } = useWriteContract()
+  
+  const {
+    writeContract: addMultipleStreams,
+    data: addMultipleStreamsHash,
+    isPending: isAddMultipleStreamsPending
+  } = useWriteContract()
 
 
   // const { 
@@ -233,6 +266,18 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
 
   const { isLoading: isAddStreamConfirming, isSuccess: isAddStreamSuccess } = useWaitForTransactionReceipt({
     hash: addStreamHash,
+  })
+  
+  const { isLoading: isUpdateStreamConfirming, isSuccess: isUpdateStreamSuccess } = useWaitForTransactionReceipt({
+    hash: updateStreamHash,
+  })
+  
+  const { isLoading: isCancelStreamConfirming, isSuccess: isCancelStreamSuccess } = useWaitForTransactionReceipt({
+    hash: cancelStreamHash,
+  })
+  
+  const { isLoading: isAddMultipleStreamsConfirming, isSuccess: isAddMultipleStreamsSuccess } = useWaitForTransactionReceipt({
+    hash: addMultipleStreamsHash,
   })
 
   const { isLoading: isDepositConfirming, isSuccess: isDepositSuccess } = useWaitForTransactionReceipt({
@@ -383,6 +428,37 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
       setNewStreamPeriod('30')
     }
   }, [isAddStreamSuccess, refetchStreamIds, refetchTotalLocked])
+  
+  React.useEffect(() => {
+    if (isUpdateStreamSuccess) {
+      toast.success('Stream updated successfully!')
+      setSelectedStreamForEdit(null)
+      setEditStreamAmount('')
+      setEditStreamReleaseRate('')
+      setEditStreamTgeRate('')
+      setEditStreamPeriod('')
+      refetchStreamIds()
+      refetchTotalLocked()
+    }
+  }, [isUpdateStreamSuccess, refetchStreamIds, refetchTotalLocked])
+  
+  React.useEffect(() => {
+    if (isCancelStreamSuccess) {
+      toast.success('Stream cancelled successfully!')
+      refetchStreamIds()
+      refetchTotalLocked()
+    }
+  }, [isCancelStreamSuccess, refetchStreamIds, refetchTotalLocked])
+  
+  React.useEffect(() => {
+    if (isAddMultipleStreamsSuccess) {
+      toast.success('Batch streams created successfully!')
+      setBatchStreamData('')
+      setShowBatchCreate(false)
+      refetchStreamIds()
+      refetchTotalLocked()
+    }
+  }, [isAddMultipleStreamsSuccess, refetchStreamIds, refetchTotalLocked])
 
   React.useEffect(() => {
     if (isDepositSuccess) {
@@ -491,23 +567,143 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }
 
-  // const _handleCancelStream = (streamId: number) => {
-  //   if (!confirm('Are you sure you want to cancel this stream? This action cannot be undone.')) {
-  //     return
-  //   }
+  const handleCancelStream = (streamId: number) => {
+    if (!confirm('Are you sure you want to cancel this stream? This action cannot be undone.')) {
+      return
+    }
 
-  //   try {
-  //     cancelStream({
-  //       address: contractAddress as Address,
-  //       abi: hyperVestingABI,
-  //       functionName: 'cancelStream',
-  //       args: [BigInt(streamId)],
-  //     })
-  //   } catch (error) {
-  //     console.error('Cancel stream error:', error)
-  //     toast.error('Failed to cancel stream: ' + (error as Error).message)
-  //   }
-  // }
+    try {
+      cancelStreamContract({
+        address: contractAddress as Address,
+        abi: hyperVestingABI,
+        functionName: 'cancelStream',
+        args: [BigInt(streamId)],
+      })
+    } catch (error) {
+      console.error('Cancel stream error:', error)
+      toast.error('Failed to cancel stream: ' + (error as Error).message)
+    }
+  }
+  
+  const handleUpdateStream = () => {
+    if (!selectedStreamForEdit) return
+    
+    try {
+      const amountInWei = editStreamAmount ? parseUnits(editStreamAmount, (tokenDecimals as number) || 18) : selectedStreamForEdit.totalAmount
+      const releaseRate = editStreamReleaseRate ? Number(editStreamReleaseRate) : selectedStreamForEdit.releaseRate
+      const tgeRate = editStreamTgeRate ? Number(editStreamTgeRate) * 100 : selectedStreamForEdit.tgeRate
+      const period = editStreamPeriod ? Number(editStreamPeriod) * 86400 : selectedStreamForEdit.period
+      
+      updateStream({
+        address: contractAddress as Address,
+        abi: hyperVestingABI,
+        functionName: 'updateStream',
+        args: [
+          BigInt(selectedStreamForEdit.streamId),
+          amountInWei,
+          releaseRate,
+          tgeRate,
+          period,
+        ],
+      })
+    } catch (error) {
+      console.error('Update stream error:', error)
+      toast.error('Failed to update stream: ' + (error as Error).message)
+    }
+  }
+  
+  const handleUserLookup = async () => {
+    if (!userLookupAddress || !publicClient) {
+      toast.error('Please enter a valid address')
+      return
+    }
+    
+    try {
+      const checksumAddress = getAddress(userLookupAddress)
+      
+      // Get stream IDs for the user
+      const userStreamIds = await publicClient.readContract({
+        address: contractAddress as Address,
+        abi: hyperVestingABI,
+        functionName: 'getUserStreamIds',
+        args: [checksumAddress],
+      }) as bigint[]
+      
+      if (!userStreamIds || userStreamIds.length === 0) {
+        toast.info('No streams found for this address')
+        setLookupStreams([])
+        return
+      }
+      
+      // Fetch stream details
+      const streamDetails = await Promise.all(
+        userStreamIds.map(async (streamId) => {
+          const info = await publicClient.readContract({
+            address: contractAddress as Address,
+            abi: hyperVestingABI,
+            functionName: 'getStreamInfo',
+            args: [checksumAddress, streamId],
+          }) as any
+          
+          return {
+            streamId: Number(streamId),
+            totalAmount: info.totalAmount as bigint,
+            totalClaimed: info.totalClaimed as bigint,
+            startTime: info.startTime as bigint,
+            cliff: info.cliff as bigint,
+            releaseRate: Number(info.releaseRate),
+            tgeRate: Number(info.tgeRate),
+            period: Number(info.period),
+            active: info.active as boolean,
+            claimable: info.claimable as bigint,
+          }
+        })
+      )
+      
+      setLookupStreams(streamDetails)
+      toast.success(`Found ${streamDetails.length} stream(s) for this address`)
+    } catch (error) {
+      console.error('User lookup error:', error)
+      toast.error('Failed to lookup user streams: ' + (error as Error).message)
+    }
+  }
+  
+  const handleBatchCreate = () => {
+    if (!batchStreamData) {
+      toast.error('Please enter batch stream data')
+      return
+    }
+    
+    try {
+      const lines = batchStreamData.split('\n').filter(line => line.trim())
+      const users: Address[] = []
+      const amounts: bigint[] = []
+      const cliffs: bigint[] = []
+      const releaseRates: number[] = []
+      const tgeRates: number[] = []
+      const periods: number[] = []
+      
+      lines.forEach((line) => {
+        const [address, amount, cliff, rate, tge, period] = line.split(',').map(s => s.trim())
+        users.push(getAddress(address))
+        amounts.push(parseUnits(amount, (tokenDecimals as number) || 18))
+        cliffs.push(BigInt(Number(cliff || 0) * 30 * 86400)) // months to seconds
+        releaseRates.push(Number(rate || 12) * 2160000000000) // months to rate format
+        tgeRates.push(Number(tge || 10) * 100) // percentage to basis points
+        periods.push(Number(period || 30) * 86400) // days to seconds
+      })
+      
+      addMultipleStreams({
+        address: contractAddress as Address,
+        abi: hyperVestingABI,
+        functionName: 'addMultipleStreams',
+        args: [users, amounts, cliffs, releaseRates, tgeRates, periods],
+      })
+    } catch (error) {
+      console.error('Batch create error:', error)
+      toast.error('Failed to create batch streams: ' + (error as Error).message)
+    }
+  }
 
   const handleDepositTokens = async () => {
     if (!depositAmount) {
@@ -1336,6 +1532,204 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             'Create Stream'
+                          )}
+                        </Button>
+                      </CardContent>
+                    )}
+                  </Card>
+
+                  {/* User Stream Lookup */}
+                  <Card className="bg-black/50 backdrop-blur-xl border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-primary" />
+                          User Stream Lookup
+                        </span>
+                        <Button
+                          onClick={() => setShowUserLookup(!showUserLookup)}
+                          variant="outline"
+                          size="sm"
+                          className="border-white/20 text-white hover:bg-white/10"
+                        >
+                          {showUserLookup ? 'Hide' : 'Lookup'}
+                        </Button>
+                      </CardTitle>
+                    </CardHeader>
+                    {showUserLookup && (
+                      <CardContent className="space-y-4">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Enter user address (0x...)"
+                            value={userLookupAddress}
+                            onChange={(e) => setUserLookupAddress(e.target.value)}
+                            className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                          />
+                          <Button
+                            onClick={handleUserLookup}
+                            className="whitespace-nowrap"
+                          >
+                            Search Streams
+                          </Button>
+                        </div>
+                        
+                        {lookupStreams.length > 0 && (
+                          <div className="space-y-3 mt-4">
+                            <h4 className="text-white font-medium">Found {lookupStreams.length} stream(s)</h4>
+                            {lookupStreams.map((stream) => (
+                              <div key={stream.streamId} className="p-4 bg-white/5 rounded-lg border border-white/10">
+                                <div className="flex justify-between items-start mb-3">
+                                  <div>
+                                    <p className="text-white font-medium">Stream #{stream.streamId}</p>
+                                    <p className="text-white/50 text-sm">
+                                      {formatUnits(stream.totalAmount, (tokenDecimals as number) || 18)} tokens
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={() => {
+                                        setSelectedStreamForEdit(stream)
+                                        setEditStreamAmount(formatUnits(stream.totalAmount, (tokenDecimals as number) || 18))
+                                        setEditStreamReleaseRate(String(stream.releaseRate / 2160000000000))
+                                        setEditStreamTgeRate(String(stream.tgeRate / 100))
+                                        setEditStreamPeriod(String(stream.period / 86400))
+                                      }}
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-white border-white/20 hover:bg-white/10"
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      onClick={() => handleCancelStream(stream.streamId)}
+                                      size="sm"
+                                      variant="destructive"
+                                      disabled={!stream.active}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <span className="text-white/70">Status:</span>
+                                  <span className="text-white">{stream.active ? 'Active' : 'Cancelled'}</span>
+                                  <span className="text-white/70">Claimed:</span>
+                                  <span className="text-white">{formatUnits(stream.totalClaimed, (tokenDecimals as number) || 18)}</span>
+                                  <span className="text-white/70">Claimable:</span>
+                                  <span className="text-white">{formatUnits(stream.claimable, (tokenDecimals as number) || 18)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {selectedStreamForEdit && (
+                          <div className="mt-4 p-4 bg-primary/10 rounded-lg border border-primary/30">
+                            <h4 className="text-white font-medium mb-3">Edit Stream #{selectedStreamForEdit.streamId}</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-white/70">Amount</Label>
+                                <Input
+                                  value={editStreamAmount}
+                                  onChange={(e) => setEditStreamAmount(e.target.value)}
+                                  className="bg-white/5 border-white/10 text-white"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-white/70">Release (months)</Label>
+                                <Input
+                                  value={editStreamReleaseRate}
+                                  onChange={(e) => setEditStreamReleaseRate(e.target.value)}
+                                  className="bg-white/5 border-white/10 text-white"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-white/70">TGE %</Label>
+                                <Input
+                                  value={editStreamTgeRate}
+                                  onChange={(e) => setEditStreamTgeRate(e.target.value)}
+                                  className="bg-white/5 border-white/10 text-white"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-white/70">Period (days)</Label>
+                                <Input
+                                  value={editStreamPeriod}
+                                  onChange={(e) => setEditStreamPeriod(e.target.value)}
+                                  className="bg-white/5 border-white/10 text-white"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                onClick={handleUpdateStream}
+                                disabled={isUpdateStreamPending || isUpdateStreamConfirming}
+                              >
+                                {isUpdateStreamPending || isUpdateStreamConfirming ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  'Update Stream'
+                                )}
+                              </Button>
+                              <Button
+                                onClick={() => setSelectedStreamForEdit(null)}
+                                variant="outline"
+                                className="text-white border-white/20"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    )}
+                  </Card>
+
+                  {/* Batch Stream Creation */}
+                  <Card className="bg-black/50 backdrop-blur-xl border-white/10">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <Upload className="w-5 h-5 text-primary" />
+                          Batch Stream Creation
+                        </span>
+                        <Button
+                          onClick={() => setShowBatchCreate(!showBatchCreate)}
+                          variant="outline"
+                          size="sm"
+                          className="border-white/20 text-white hover:bg-white/10"
+                        >
+                          {showBatchCreate ? 'Hide' : 'Create Batch'}
+                        </Button>
+                      </CardTitle>
+                    </CardHeader>
+                    {showBatchCreate && (
+                      <CardContent className="space-y-4">
+                        <Alert>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Batch Format</AlertTitle>
+                          <AlertDescription>
+                            Enter one stream per line: address,amount,cliff_months,release_months,tge_percent,period_days
+                            <br />
+                            Example: 0x123...,1000,0,12,10,30
+                          </AlertDescription>
+                        </Alert>
+                        <Textarea
+                          placeholder="Enter batch stream data..."
+                          value={batchStreamData}
+                          onChange={(e) => setBatchStreamData(e.target.value)}
+                          rows={6}
+                          className="bg-white/5 border-white/10 text-white placeholder:text-white/30 font-mono text-sm"
+                        />
+                        <Button
+                          onClick={handleBatchCreate}
+                          disabled={isAddMultipleStreamsPending || isAddMultipleStreamsConfirming}
+                          className="w-full"
+                        >
+                          {isAddMultipleStreamsPending || isAddMultipleStreamsConfirming ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            `Create ${batchStreamData.split('\n').filter(l => l.trim()).length} Streams`
                           )}
                         </Button>
                       </CardContent>
