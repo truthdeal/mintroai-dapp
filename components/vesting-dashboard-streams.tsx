@@ -59,6 +59,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
   // State
   const [copiedAddress, setCopiedAddress] = React.useState(false)
   const [depositAmount, setDepositAmount] = React.useState('')
+  const [pendingDepositAmount, setPendingDepositAmount] = React.useState('')
   const [selectedStreamIds, setSelectedStreamIds] = React.useState<number[]>([])
   
   // Use custom hooks
@@ -266,6 +267,7 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     if (isDepositSuccess) {
       toast.success('Tokens deposited successfully!')
       setDepositAmount('')
+      setPendingDepositAmount('')
       refetchTokenBalance()
       refetchUserTokenBalance()
     }
@@ -273,22 +275,23 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
 
   // Handle approval success - automatically deposit after approval
   React.useEffect(() => {
-    if (isApproveSuccess && depositAmount) {
+    if (isApproveSuccess && pendingDepositAmount) {
       toast.success('Approval successful! Now depositing tokens...')
       refetchAllowance()
       
       // Small delay to ensure allowance is updated
       setTimeout(() => {
-        const amountInWei = parseAmountToWei(depositAmount, (tokenDecimals as number) || 18)
+        const amountInWei = parseAmountToWei(pendingDepositAmount, (tokenDecimals as number) || 18)
         depositTokens({
           address: contractAddress as Address,
           abi: hyperVestingABI,
           functionName: 'depositTokens',
           args: [amountInWei],
         })
+        setPendingDepositAmount('') // Clear pending amount after initiating deposit
       }, 1000)
     }
-  }, [isApproveSuccess, depositAmount, tokenDecimals, depositTokens, contractAddress, refetchAllowance])
+  }, [isApproveSuccess, pendingDepositAmount, tokenDecimals, depositTokens, contractAddress, refetchAllowance])
 
   // Handlers
   const handleClaimStream = (streamId: number) => {
@@ -448,14 +451,6 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
         toast.warning(validation.error || 'TGE rate adjusted')
       }
       
-      console.log('Updating searched stream:', {
-        streamId: stream.streamId,
-        amountInWei: amountInWei.toString(),
-        releaseRate,
-        tgeRate: validation.adjustedTgeRate ?? tgeRate,
-        period
-      })
-      
       updateStream({
         address: contractAddress as Address,
         abi: hyperVestingABI,
@@ -474,8 +469,11 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
   }
 
-  const handleDepositTokens = async () => {
-    if (!depositAmount) {
+  const handleDepositTokens = async (amount?: string) => {
+    // Use the passed amount if provided, otherwise use the state
+    const depositAmountToUse = amount || depositAmount
+    
+    if (!depositAmountToUse) {
       toast.error('Please enter an amount')
       return
     }
@@ -486,22 +484,25 @@ export function VestingDashboardStreams({ contractAddress }: VestingDashboardPro
     }
 
     try {
-      const amountInWei = parseAmountToWei(depositAmount, (tokenDecimals as number) || 18)
-      console.log('Deposit amount in wei:', amountInWei.toString())
-      console.log('Token address:', tokenAddress)
-      console.log('Contract address:', contractAddress)
+      const amountInWei = parseAmountToWei(depositAmountToUse, (tokenDecimals as number) || 18)
       
       // Check if we need approval
       const currentAllowance = tokenAllowance || BigInt(0)
-      console.log('Current allowance:', currentAllowance.toString())
       
       if (currentAllowance < amountInWei) {
         // Need approval first
         toast.info('Approval required. Please check your wallet for the approval request.')
-        await approveToken(amountInWei)
+        setPendingDepositAmount(depositAmountToUse) // Store the amount for the approval success effect
+        
+        try {
+          await approveToken(amountInWei)
+        } catch (approvalError) {
+          console.error('Approval failed:', approvalError)
+          setPendingDepositAmount('') // Clear pending amount on error
+          throw approvalError
+        }
       } else {
         // Already approved, proceed with deposit
-        console.log('Sufficient allowance, depositing tokens')
         depositTokens({
           address: contractAddress as Address,
           abi: hyperVestingABI,

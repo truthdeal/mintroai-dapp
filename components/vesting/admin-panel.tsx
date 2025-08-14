@@ -48,7 +48,7 @@ interface AdminPanelProps {
   maxTokensToLock?: bigint
   isOwner: boolean
   tgeTimestamp?: bigint
-  onDepositTokens: (amount: string) => void
+  onDepositTokens: (amount: string) => void | Promise<void>
   onCreateStream: (
     user: string,
     amount: string,
@@ -149,12 +149,16 @@ export function AdminPanel({
     }
   }, [isUpdateStreamPending, editingStream, isUpdating, userLookupAddress, onSearchUserStreams])
   
-  const handleDepositTokens = () => {
+  const handleDepositTokens = async () => {
     if (!depositAmount) {
       toast.error('Please enter an amount')
       return
     }
-    onDepositTokens(depositAmount)
+    try {
+      await onDepositTokens(depositAmount)
+    } catch (error) {
+      console.error('Error calling onDepositTokens:', error)
+    }
     // Don't clear the amount here - let the parent component handle it after success
   }
   
@@ -687,16 +691,6 @@ export function AdminPanel({
                       try {
                         setIsUpdating(true)
                         
-                        // Log for debugging
-                        console.log('Updating stream from admin panel:', {
-                          streamId: editingStream.streamId,
-                          amount: editAmount,
-                          releaseMonths: editReleaseMonths,
-                          tgeRate: editTgeRate,
-                          period: editPeriod,
-                          stream: editingStream
-                        })
-                        
                         // Use onUpdateSearchedStream if available (for searched streams)
                         // Otherwise fall back to onUpdateStream (for user's own streams)
                         if (onUpdateSearchedStream) {
@@ -800,6 +794,7 @@ export function AdminPanel({
                 onClick={handleDepositTokens}
                 className="w-full bg-green-500 hover:bg-green-600 text-white"
                 disabled={isDepositPending || !depositAmount}
+                type="button"
               >
                 {isDepositPending ? (
                   <>

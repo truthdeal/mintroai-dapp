@@ -135,13 +135,7 @@ export function useTokenApproval(
       const checksummedToken = ensureChecksumAddress(tokenAddress)
       const checksummedSpender = ensureChecksumAddress(spenderAddress)
       
-      console.log('Approving token:', {
-        token: checksummedToken,
-        spender: checksummedSpender,
-        amount: amount.toString()
-      })
-      
-      await approve({
+      approve({
         address: checksummedToken,
         abi: erc20ABI,
         functionName: 'approve',
@@ -370,16 +364,7 @@ export function useCreateStream(
       const tgeRate = percentageToBasisPoints(Number(tgePercentage))
       const periodSeconds = periodDaysToSeconds(Number(periodDays))
       
-      console.log('Creating stream:', {
-        user: checksumAddress,
-        amount: amountInWei.toString(),
-        cliff: cliffSeconds.toString(),
-        releaseRate,
-        tgeRate,
-        period: periodSeconds
-      })
-      
-      await addStream({
+      addStream({
         address: contractAddress as Address,
         abi: hyperVestingABI,
         functionName: 'addStream',
