@@ -7,7 +7,7 @@ import {
   darkTheme,
 } from '@rainbow-me/rainbowkit'
 import { WagmiProvider } from 'wagmi'
-import { /* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ bscTestnet } from 'viem/chains'
+import { /* mainnet, polygon, optimism, */ arbitrum, base, bscTestnet } from 'viem/chains'
 import { hyperEVM } from '@/config/customChains'
 import { SUPPORTED_NETWORKS } from '@/config/networks'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -26,7 +26,7 @@ const soneium = SUPPORTED_NETWORKS[1868].chain
 const config = getDefaultConfig({
   appName: 'MintroAI DApp',
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID,
-  chains: [/* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ customBSC, hyperEVM, soneium, theta, bscTestnet, customAuroraTestnet],
+  chains: [/* mainnet, polygon, optimism, */ arbitrum, base,  customBSC, hyperEVM, soneium, theta, bscTestnet, customAuroraTestnet],
   ssr: true,
   appIcon: '/assets/logo-small.png',
 })

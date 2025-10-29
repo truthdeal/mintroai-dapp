@@ -1,4 +1,4 @@
-import { /* mainnet, polygon, optimism, */ arbitrum, /* base, zora, */ bsc, bscTestnet, auroraTestnet, theta, thetaTestnet, soneium } from 'viem/chains'
+import { /* mainnet, polygon, optimism, */ arbitrum, base, bsc, bscTestnet, auroraTestnet, theta, thetaTestnet, soneium } from 'viem/chains'
 import { type Chain } from 'viem'
 import { hyperEVM } from './customChains'
 import { parseUnits } from 'ethers'
@@ -107,5 +107,10 @@ export const SUPPORTED_NETWORKS: { [key: number]: NetworkConfig } = {
       iconUrl: 'https://s2.coinmarketcap.com/static/img/coins/64x64/35635.png',
     } as Chain,
     factoryAddress: "0xCe60855D40fa04c18990F94e673c769d91c37737" as `0x${string}`, // Soneium Mainnet factory address
+  },
+  // Base Mainnet
+  [base.id]: {
+    chain: base,
+    factoryAddress: "0xCe60855D40fa04c18990F94e673c769d91c37737" as `0x${string}`, // Base Mainnet factory address
   }
 } 
